@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+*.egg
+build/
+dist/
+.ipynb_checkpoints/
+
+# Environment
+.env
+!.env-example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.pyrightconfig.json
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+
+# Temporary files
+.~lock.*
+.DS_Store
+*.tmp
+*.bak
+*.swp
+*~
+
+# Model files
+models/
+
+# Example docs
+example_docs/
+
+# Project specific
+.aider*
+sample.pdf
+Отчетный заплыв 19.04..2025.docx
+ChatExport_2025-06-05

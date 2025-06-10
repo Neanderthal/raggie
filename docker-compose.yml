@@ -1,0 +1,125 @@
+services:
+  pgvector-rag-db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-pgvector}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-pgvector_rag}
+    volumes:
+      - pgvector-rag-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq-server:
+    image: rabbitmq:3.12.14-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmqctl status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tokenizer_model:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL: /models/nomic-embed-text-v1.5.Q5_K_M.gguf
+      HOST: 0.0.0.0
+    volumes:
+      - ./models/tokenizer_model:/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chat_model:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    ports:
+      - "8001:8000"
+    environment:
+      MODEL: /models/gemma-3-12b-it-Q4_K_M.gguf
+      HOST: 0.0.0.0
+      N_GPU_LAYERS: 25
+      CTX_SIZE: 16384
+      ROPE_SCALE: 0.25
+      YARN_ORIG_CTX: 16384
+    volumes:
+      - ./models/chat_model:/models
+    depends_on:
+      tokenizer_model:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgvector-rag-app-api:
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: pgvector-rag-db
+      DB_NAME: ${DB_NAME:-pgvector_rag}
+      DB_USER: ${DB_USER:-pgvector}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_URL: http://chat_model:8000/v1/chat/completions
+      EMBEDDING_URL: http://tokenizer_model:8000/v1/embeddings
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: rpc://
+    depends_on:
+      pgvector-rag-db:
+        condition: service_healthy
+      rabbitmq-server:
+        condition: service_healthy
+      chat_model:
+        condition: service_healthy
+      tokenizer_model:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+
+  pgvector-rag-app-celery_worker:
+    build:
+      context: ./
+      dockerfile: docker/Dockerfile.model
+    command: celery -A celery_app worker -l info
+    environment:
+      DB_HOST: pgvector-rag-db
+      DB_NAME: ${DB_NAME:-pgvector_rag}
+      DB_USER: ${DB_USER:-pgvector}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_URL: http://chat_model:8000/v1/chat/completions
+      EMBEDDING_URL: http://tokenizer_model:8000/v1/embeddings
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: rpc://
+    depends_on:
+      pgvector-rag-db:
+        condition: service_healthy
+      rabbitmq-server:
+        condition: service_healthy
+      chat_model:
+        condition: service_healthy
+      tokenizer_model:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+
+volumes:
+  pgvector-rag-db-data:
