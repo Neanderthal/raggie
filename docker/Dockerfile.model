@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install poetry
 
 # Copy project files
-COPY model_app/pyproject.toml model_app/poetry.lock ./
+COPY pyproject.toml poetry.lock ./
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
