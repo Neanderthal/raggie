@@ -38,10 +38,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MODEL: /models/nomic-embed-text-v1.5.Q5_K_M.gguf
+      MODEL: /models/7B/ggml-model-f16.gguf
       HOST: 0.0.0.0
     volumes:
-      - ./models/tokenizer_model:/models
+      - ./models:/models
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
       interval: 10s
