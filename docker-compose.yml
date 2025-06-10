@@ -41,12 +41,13 @@ services:
       MODEL: /models/nomic-embed-text-v1.5.Q5_K_M.gguf
       HOST: 0.0.0.0
     volumes:
-      - ./models/tokenizer_model:/models
+      - ./models/tokenizer_model:/models:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   chat_model:
     image: ghcr.io/ggml-org/llama.cpp:server
@@ -60,15 +61,16 @@ services:
       ROPE_SCALE: 0.25
       YARN_ORIG_CTX: 16384
     volumes:
-      - ./models/chat_model:/models
+      - ./models/chat_model:/models:ro
     depends_on:
       tokenizer_model:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   api:
     build:
