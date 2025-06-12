@@ -19,6 +19,11 @@ RUN uv pip install -r requirements.txt --system
 
 # Copy the rest of the application
 COPY ./model_app /app
+COPY ./celery_app /app/celery_app
+COPY ./setup.py /app/
+
+# Make the model_app package installable
+RUN pip install -e .
 
 # Set up Celery
 WORKDIR /app/celery_app

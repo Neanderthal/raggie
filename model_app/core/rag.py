@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 # Configure OpenAI client for embedding model
-BASE_URL = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8000/v1")
+# Use different URLs for Docker vs local development
+if os.getenv("DOCKER_ENV") == "true":
+    BASE_URL = os.getenv("EMBEDDING_MODEL_URL", "http://tokenizer_model:8000/v1")
+else:
+    BASE_URL = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8000/v1")
 
 embedding_client = AsyncOpenAI(
     api_key="dummy-key", base_url=BASE_URL, timeout=30  # Add timeout for connection

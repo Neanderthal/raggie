@@ -8,10 +8,17 @@ from model_app.core.rag import rag_query
 logger = logging.getLogger(__name__)
 
 # Configure OpenAI client for chat model
-chat_client = AsyncOpenAI(
-    api_key="dummy-key",
-    base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
-)
+# Use different URLs for Docker vs local development
+if os.getenv("DOCKER_ENV") == "true":
+    chat_client = AsyncOpenAI(
+        api_key="dummy-key",
+        base_url=os.getenv("CHAT_MODEL_URL", "http://chat_model:8000/v1"),
+    )
+else:
+    chat_client = AsyncOpenAI(
+        api_key="dummy-key",
+        base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
+    )
 
 
 def build_rag_prompt(chunks: List[str], user_query: str) -> str:
