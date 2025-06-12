@@ -21,33 +21,20 @@ else:
     )
 
 
-def build_rag_prompt(chunks: List[str], user_query: str) -> str:
-    """Build a prompt for the chat model using RAG context chunks.
+def build_system_prompt() -> str:
+    return """You are a helpful assistant answering user questions using the provided context information.
+Use only the context to answer. If the answer is not contained in the provided context,
+reply with "The information is not available in the provided context."
+Provide clear and concise answers in the same language as the user's question."""
 
-    Args:
-        chunks: List of context strings
-        user_query: The user's question
+def build_user_prompt(chunks: List[str], user_query: str) -> str:
+    """Build a prompt for the chat model using RAG context chunks."""
+    context = "\n\n".join([f"Chunk {i + 1}: {chunk}" for i, chunk in enumerate(chunks)])
+    return f"""Here is the relevant context information:
 
-    Returns:
-        Formatted prompt string
-    """
-    labeled_chunks = "\n\n".join(
-        [f"Chunk {i + 1}: {chunk}" for i, chunk in enumerate(chunks)]
-    )
-    return f"""You are a helpful assistant answering user questions using the information provided below. 
-        Use only the context to answer. If the answer is not contained in the provided context, 
-        reply with "The information is not available in the provided context."
+{context}
 
-        --- CONTEXT CHUNKS ---
-        {labeled_chunks}
-        --- END OF CONTEXT ---
-
-        --- USER QUESTION ---
-        {user_query}
-        --- END OF QUESTION ---
-
-        Provide a clear and concise answer based only on the context above in the language of user question.
-        """
+Question: {user_query}"""
 
 
 async def get_chat_response(
@@ -72,13 +59,16 @@ async def get_chat_response(
     full_docs = [doc[0] for doc in documents_found]
     logger.info(f"Using {len(full_docs)} documents for response")
 
-    response = await chat_client.completions.create(
+    response = await chat_client.chat.completions.create(
         model="chat-model",
-        prompt=build_rag_prompt(full_docs, question),
+        messages=[
+            {"role": "system", "content": build_system_prompt()},
+            {"role": "user", "content": build_user_prompt(full_docs, question)}
+        ],
         temperature=0.7,
         max_tokens=512,
     )
-    return response.choices[0].text, full_docs
+    return response.choices[0].message.content, full_docs
 
 
 async def chat(username: str = "", scope_name: str = ""):
