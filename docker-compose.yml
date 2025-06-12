@@ -3,6 +3,8 @@ services:
     image: pgvector/pgvector:pg16
     ports:
       - "5432:5432"
+    networks:
+      - app_network
     environment:
       POSTGRES_USER: ${DB_USER:-pgvector}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
@@ -13,7 +15,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${DB_USER:-pgvector} -d ${DB_USER:-pgvector}",
+          "pg_isready -U ${DB_USER:-pgvector} -d ${DB_NAME:-pgvector_rag}",
         ]
       interval: 10s
       timeout: 5s
@@ -24,6 +26,8 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - app_network
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
@@ -35,8 +39,11 @@ services:
 
   tokenizer_model:
     image: ghcr.io/ggml-org/llama.cpp:server
-    ports:
-      - "8000:8000"
+    # Only expose to host if needed for development/debugging
+    # ports:
+    #   - "8000:8000"
+    networks:
+      - app_network
     volumes:
       - ./models/tokenizer_model:/models:ro
     command: >
@@ -45,7 +52,7 @@ services:
       --port 8000
       --embedding
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:8000/v1/models || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -53,8 +60,11 @@ services:
 
   chat_model:
     image: ghcr.io/ggml-org/llama.cpp:server
-    ports:
-      - "8001:8000" # Expose container's 8000 on host 8001
+    # Only expose to host if needed for development/debugging
+    # ports:
+    #   - "8001:8000" # Expose container's 8000 on host 8001
+    networks:
+      - app_network
     volumes:
       - ./models/chat_model:/models:ro
     depends_on:
@@ -69,7 +79,7 @@ services:
       --rope-scale 0.25
       --yarn-orig-ctx 16384
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:8000/v1/models || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -81,6 +91,8 @@ services:
       dockerfile: docker/Dockerfile.api
     ports:
       - "8080:8080"
+    networks:
+      - app_network
     environment:
       DB_HOST: db
       DB_NAME: ${DB_NAME:-pgvector_rag}
@@ -108,6 +120,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile.model
     command: celery -A celery_app worker -l info
+    networks:
+      - app_network
     environment:
       DB_HOST: db
       DB_NAME: ${DB_NAME:-pgvector_rag}
@@ -132,3 +146,7 @@ services:
 
 volumes:
   data:
+
+networks:
+  app_network:
+    driver: bridge
