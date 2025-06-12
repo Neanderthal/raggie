@@ -87,14 +87,18 @@ async def chat(username: str = "", scope_name: str = ""):
     print(f"Optional filters - scope: {scope_name or 'all'}, user: {username or 'any'}")
 
     while True:
-        question = input("Ask a question: ")
-        if question.lower() == "exit":
-            break
+        try:
+            question = input("Ask a question: ").encode('utf-8').decode('utf-8')
+            if question.lower() == "exit":
+                break
 
-        answer, _ = await get_chat_response(
-            question, username or None, scope_name or None
-        )
-        print(f"You Asked: {question}")
-        print(f"Answer: {answer}")
+            answer, _ = await get_chat_response(
+                question, username or None, scope_name or None
+            )
+            print(f"You Asked: {question}")
+            print(f"Answer: {answer}")
+        except UnicodeError as e:
+            print(f"Error reading input: {e}. Please try again.")
+            continue
 
     print("Chat ended.")
