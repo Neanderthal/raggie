@@ -9,16 +9,12 @@ logger = logging.getLogger(__name__)
 
 # Configure OpenAI client for chat model
 # Use different URLs for Docker vs local development
-if os.getenv("DOCKER_ENV") == "true":
-    chat_client = AsyncOpenAI(
-        api_key="dummy-key",
-        base_url=os.getenv("CHAT_MODEL_URL", "http://chat_model:8000/v1"),
-    )
-else:
-    chat_client = AsyncOpenAI(
-        api_key="dummy-key",
-        base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
-    )
+# Configure OpenAI client for chat model
+chat_client = AsyncOpenAI(
+    api_key="dummy-key",
+    base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
+    timeout=30.0
+)
 
 
 def build_system_prompt() -> str:
