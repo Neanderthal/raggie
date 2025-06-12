@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # Configure OpenAI client for chat model
 chat_client = AsyncOpenAI(
     api_key="dummy-key",
-    base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8005/v1"),
+    base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
 )
 
 

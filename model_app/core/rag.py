@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 # Configure OpenAI client for embedding model
-BASE_URL = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
+BASE_URL = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8000/v1")
 
 embedding_client = AsyncOpenAI(
     api_key="dummy-key", base_url=BASE_URL, timeout=30  # Add timeout for connection
