@@ -1,7 +1,12 @@
 import argparse
 import asyncio
+import os
+import sys
 from enum import Enum
 from dotenv import find_dotenv, load_dotenv
+
+# Add the parent directory to sys.path to make model_app importable
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model_app.commands.chat import chat
 from model_app.commands.create_db import create_db
