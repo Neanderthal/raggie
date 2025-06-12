@@ -37,11 +37,13 @@ services:
     image: ghcr.io/ggml-org/llama.cpp:server
     ports:
       - "8000:8000"
-    environment:
-      MODEL: /models/nomic-embed-text-v1.5.Q5_K_M.gguf
-      HOST: 0.0.0.0
     volumes:
       - ./models/tokenizer_model:/models:ro
+    command: >
+      -m /models/nomic-embed-text-v1.5.Q5_K_M.gguf
+      --host 0.0.0.0
+      --port 8000
+      --embedding
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
       interval: 30s
@@ -52,19 +54,20 @@ services:
   chat_model:
     image: ghcr.io/ggml-org/llama.cpp:server
     ports:
-      - "8001:8000"
-    environment:
-      MODEL: /models/gemma-3-12b-it-Q4_K_M.gguf
-      HOST: 0.0.0.0
-      N_GPU_LAYERS: 25
-      CTX_SIZE: 16384
-      ROPE_SCALE: 0.25
-      YARN_ORIG_CTX: 16384
+      - "8001:8000" # Expose container's 8000 on host 8001
     volumes:
       - ./models/chat_model:/models:ro
     depends_on:
       tokenizer_model:
         condition: service_healthy
+    command: >
+      -m /models/gemma-3-12b-it-Q4_K_M.gguf
+      --host 0.0.0.0
+      --port 8000
+      --n-gpu-layers 25
+      --ctx-size 16384
+      --rope-scale 0.25
+      --yarn-orig-ctx 16384
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/models || exit 1"]
       interval: 30s
