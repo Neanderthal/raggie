@@ -29,51 +29,41 @@ async def rag_query(
     query: str,
     scope: str | None = None,
     user: str | None = None,
-) -> list[tuple[str, list[float], float]] | str:
-    """Store RAG conversation with optional scope and user filtering"""
+    k: int = 5,
+    similarity_threshold: float = 0.7,
+) -> list[tuple[str, float]]:
+    """Query RAG documents using Postgres vector store.
+    
+    Args:
+        query: Search query string
+        scope: Optional scope filter
+        user: Optional user filter  
+        k: Number of results to return
+        similarity_threshold: Minimum similarity score (0-1)
+        
+    Returns:
+        List of tuples containing (document_content, similarity_score)
+    """
     try:
-        # Get embeddings from containerized service
+        # Generate embedding for the query
         _, embedding = await generate_embeddings(query)
-        results = await get_rag_documents(scope, user, embedding)
-
-        # Filter out documents with duplicate similarity scores (likely duplicates)
-        filtered_results = []
-        seen_similarities = set()
-        seen_contents = set()
-
-        for doc in results:
-            content = doc[0]
-            similarity = doc[2]  # The similarity score is now the third element
-
-            # Create a content hash for quick comparison (first 100 chars should be enough to identify duplicates)
-            content_hash = content[:100]
-
-            # Skip if we've seen this similarity score or content before
-            if similarity in seen_similarities or content_hash in seen_contents:
-                logger.info(
-                    f"Filtering out duplicate document with similarity: {similarity:.4f}"
-                )
-                continue
-
-            seen_similarities.add(similarity)
-            seen_contents.add(content_hash)
-            filtered_results.append(doc)
-
-        # Log the filtered documents
-        logger.info(
-            f"Query: '{query}' - Found {len(results)} documents, filtered to {len(filtered_results)}"
+        
+        # Query Postgres vector store
+        results = await get_rag_documents(
+            scope=scope,
+            user=user,
+            query_embedding=embedding,
+            limit=k,
+            similarity_threshold=similarity_threshold
         )
-        for i, doc in enumerate(filtered_results):
-            # Extract content and similarity score
-            content = doc[0]
-            similarity = doc[2]  # The similarity score is now the third element
-
-            # Log a preview of the document with similarity score
-            preview = content[:100] + "..." if len(content) > 100 else content
-            logger.info(f"Document {i+1} (similarity: {similarity:.4f}): {preview}")
-            logger.debug(f"Document {i+1} FULL CONTENT: {content}")
-
-        return filtered_results
+        
+        # Log results
+        logger.info(f"Query: '{query}' - Found {len(results)} matching documents")
+        for i, (content, similarity) in enumerate(results):
+            preview = (content[:100] + "...") if len(content) > 100 else content
+            logger.info(f"#{i+1} [Score: {similarity:.4f}]: {preview}")
+            
+        return results
 
     except Exception as e:
         logging.error(f"Error in RAG query: {str(e)}")

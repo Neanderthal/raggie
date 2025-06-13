@@ -60,9 +60,8 @@ async def get_chat_response(
         query=question,
         scope=scope_name,
         user=username,
+        k=3  # Get top 3 most relevant documents
     )
-
-    full_docs = [doc[0] for doc in documents_found]
     logger.info(f"Using {len(full_docs)} documents for response")
 
     response = await get_chat_client().chat.completions.create(
