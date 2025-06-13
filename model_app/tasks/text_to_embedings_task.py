@@ -48,8 +48,8 @@ def texts_to_embeddings(
     logger.info(f"Generated {len(embeddings)} embeddings")
 
     # Connect to pgvector
-    connection_str = f"postgresql+psycopg://{os.getenv('DB_USER', 'postgres')}:{os.getenv('DB_PASSWORD', 'postgres')}@{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'vector_test')}"
-    logger.info(f"Connecting to database at {os.getenv('DB_HOST', 'localhost')}")
+    connection_str = f"postgresql+psycopg://{os.getenv('DB_USER', 'pgvector')}:{os.getenv('DB_PASSWORD', 'password')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'pgvector_rag')}"
+    logger.info(f"Connecting to database at {os.getenv('DB_HOST', 'db')}")
     
     embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
     vectorstore = PGVector(
@@ -62,17 +62,26 @@ def texts_to_embeddings(
     # Store embeddings
     logger.info(f"Storing {len(embeddings)} embeddings in vector store")
     try:
-        # Convert our embeddings to LangChain document format
+        # Convert to LangChain documents and store with unique IDs
         from langchain_core.documents import Document
-        documents = [
-            Document(
-                page_content=emb["text"],
-                metadata=emb["metadata"],
-                embedding=emb["embedding"]
-            ) for emb in embeddings
-        ]
-        ids = vectorstore.add_documents(documents)
-        logger.info("Successfully stored documents in vector store")
+        from uuid import uuid4
+        
+        documents = []
+        for idx, emb in enumerate(embeddings):
+            documents.append(
+                Document(
+                    page_content=emb["text"],
+                    metadata=emb["metadata"],
+                    embedding=emb["embedding"]
+                )
+            )
+        
+        # Generate UUIDs for each document
+        ids = [str(uuid4()) for _ in documents]
+        ids = vectorstore.add_documents(documents=documents, ids=ids)
+        
+        logger.info(f"Successfully stored {len(documents)} documents in vector store")
+        logger.debug(f"First document ID: {ids[0] if ids else 'none'}")
     except Exception as e:
         logger.error(f"Failed to store documents: {str(e)}")
         raise
