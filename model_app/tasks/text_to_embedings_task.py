@@ -29,7 +29,8 @@ def texts_to_embeddings(
     # Embedding model via OpenAI-compatible API
     os.environ["OPENAI_API_BASE"] = embedding_url
     embedding_model = OpenAIEmbeddings(
-        model=embedding_model_name
+        model=embedding_model_name,
+        openai_api_key="dummy-key"  # Required parameter but not used with local model
     )
     # Semantic-aware text splitting (fast fallback option)
     # splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
