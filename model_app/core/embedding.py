@@ -37,41 +37,56 @@ class CustomLlamaEmbeddings(Embeddings):
         return self.embed_documents([text])[0]
 
     async def aembed_documents(self, texts):
+        """Async generate embeddings with better error handling."""
         embeddings = []
-        async with httpx.AsyncClient() as client:
+        timeout = httpx.Timeout(30.0)  # 30 second timeout
+        async with httpx.AsyncClient(timeout=timeout) as client:
             for text in texts:
-                response = await client.post(
-                    f"{self.base_url}/embeddings",
-                    json={"content": text},
-                )
-                response.raise_for_status()
-                data = response.json()
-                # Flatten the embedding if it's nested
-                embedding = data[0]["embedding"]
-                if isinstance(embedding[0], (list, tuple)):  # Flatten if multi-dimensional
-                    embedding = [item for sublist in embedding for item in sublist]
-                embeddings.append(embedding)
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/embeddings",
+                        json={"content": text},
+                        headers={"Content-Type": "application/json"}
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    embedding = data[0]["embedding"]
+                    if isinstance(embedding[0], (list, tuple)):  
+                        embedding = [item for sublist in embedding for item in sublist]
+                    embeddings.append(embedding)
+                except Exception as e:
+                    logger.error(f"Error generating embedding: {str(e)}")
+                    raise
         return embeddings
 
 
 async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
-
+    """Generate embeddings with retry logic and health checking."""
     embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
-
-    """Generate embeddings using the actual model with fallback"""
     text_clean = text.strip()
     if not text_clean:
-        return "empty", [0.0] * 768  # Return empty embedding vector
+        return "empty", [0.0] * 768
 
-    try:
-        # Try to use the actual client to generate embeddings
-        response = await embedding_model.aembed_documents([text_clean])
-        return text_clean, response[0]
-    except Exception as e:
-        raise ConnectionError(
-            f"Warning: Embedding model '{embedding_model_name}' on {embedding_url} not available. Error: {e}"
-        )
-        # Fallback to simple hash-based embeddings
+    max_retries = 3
+    retry_delay = 0.5  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            # Check tokenizer health first
+            async with httpx.AsyncClient() as client:
+                health = await client.get(f"{embedding_url.rstrip('/v1')}/health")
+                if health.status_code != 200:
+                    raise ConnectionError(f"Tokenizer health check failed: {health.status_code}")
+                
+                response = await embedding_model.aembed_documents([text_clean])
+                return text_clean, response[0]
+                
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise ConnectionError(
+                    f"Failed after {max_retries} attempts to generate embedding: {str(e)}"
+                )
+            await asyncio.sleep(retry_delay * (attempt + 1))
 
 
 def clean_text(text: str) -> str:
