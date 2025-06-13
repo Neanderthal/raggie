@@ -18,6 +18,7 @@ embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
     bind=True, name="model_app.tasks.text_to_embeddings", queue="embeddings_queue"
 )
 def texts_to_embeddings(
+    self,  # Added self parameter for bound tasks
     texts: list[str],
     username: str,
     scope_name: str,

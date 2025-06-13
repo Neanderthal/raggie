@@ -111,7 +111,8 @@ def import_data(data_source, username: str, scope_name: str):
 
                 app.send_task(
                     "model_app.tasks.text_to_embeddings",
-                    args=[texts, username, scope_name],
+                    args=(texts, username, scope_name),  # Changed to tuple
+                    kwargs={},  # Explicit empty kwargs
                     queue="embeddings_queue"
                 )
                 logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
@@ -124,7 +125,8 @@ def import_data(data_source, username: str, scope_name: str):
         logger.info(f"Processed {len(texts)} chunks from {data_source}")
         app.send_task(
             "model_app.tasks.text_to_embeddings",
-            args=[texts, username, scope_name],
+            args=(texts, username, scope_name),  # Changed to tuple
+            kwargs={},  # Explicit empty kwargs
             queue="embeddings_queue"
         )
         logger.info(f"Sent {len(texts)} chunks to Celery for embedding")
