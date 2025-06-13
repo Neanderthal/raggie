@@ -63,14 +63,15 @@ def texts_to_embeddings(
     logger.info(f"Storing {len(embeddings)} embeddings in vector store")
     try:
         # Convert our embeddings to LangChain document format
+        from langchain_core.documents import Document
         documents = [
-            {
-                "page_content": emb["text"],
-                "metadata": emb["metadata"],
-                "embedding": emb["embedding"]
-            } for emb in embeddings
+            Document(
+                page_content=emb["text"],
+                metadata=emb["metadata"],
+                embedding=emb["embedding"]
+            ) for emb in embeddings
         ]
-        vectorstore.add_documents(documents)
+        ids = vectorstore.add_documents(documents)
         logger.info("Successfully stored documents in vector store")
     except Exception as e:
         logger.error(f"Failed to store documents: {str(e)}")
