@@ -2,11 +2,16 @@ import os
 import re
 from typing import Tuple
 import requests
+import httpx
 from langchain.embeddings.base import Embeddings
+from dotenv import load_dotenv
+import os
 
+# Load environment variables from the model_app directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
-embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://tokenizer-model:8000/v1")
+embedding_url = os.getenv("EMBEDDING_MODEL_URL")
 
 
 class CustomLlamaEmbeddings(Embeddings):
@@ -27,6 +32,23 @@ class CustomLlamaEmbeddings(Embeddings):
 
     def embed_query(self, text):
         return self.embed_documents([text])[0]
+
+    async def aembed_documents(self, texts):
+        embeddings = []
+        async with httpx.AsyncClient() as client:
+            for text in texts:
+                response = await client.post(
+                    f"{self.base_url}/embeddings",
+                    json={"content": text},
+                )
+                response.raise_for_status()
+                data = response.json()
+                # Flatten the embedding if it's nested
+                embedding = data[0]["embedding"]
+                if isinstance(embedding[0], list):
+                    embedding = embedding[0]
+                embeddings.append(embedding)
+        return embeddings
 
 
 async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
