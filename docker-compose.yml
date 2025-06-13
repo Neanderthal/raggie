@@ -39,9 +39,8 @@ services:
 
   tokenizer_model:
     image: ghcr.io/ggml-org/llama.cpp:server
-    # Only expose to host if needed for development/debugging
-    # ports:
-    #   - "8000:8000"
+    ports:
+      - "8000:8000"
     networks:
       - app_network
     volumes:
@@ -63,8 +62,8 @@ services:
   chat_model:
     image: ghcr.io/ggml-org/llama.cpp:server
     # Only expose to host if needed for development/debugging
-    # ports:
-    #   - "8001:8000" # Expose container's 8000 on host 8001
+    ports:
+      - "8005:8000" # Expose container's 8000 on host 8001
     networks:
       - app_network
     volumes:
@@ -125,7 +124,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.model
-    command: celery -A celery_app worker -l info
+    command: sh -c "export PYTHONPATH=/app && celery -A celery_app worker -l info -E"
     networks:
       - app_network
     environment:
@@ -138,8 +137,9 @@ services:
       EMBEDDING_MODEL_URL: http://tokenizer_model:8000/v1
       CHAT_MODEL_URL: http://chat_model:8000/v1
       DOCKER_ENV: "true"
-      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq-server:5672//
       CELERY_RESULT_BACKEND: rpc://
+      PYTHONPATH: /app  # Ensure model_app is discoverable
     depends_on:
       db:
         condition: service_healthy
@@ -149,8 +149,6 @@ services:
         condition: service_healthy
       tokenizer_model:
         condition: service_healthy
-    volumes:
-      - ./app:/app
 
 volumes:
   data:
