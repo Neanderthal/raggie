@@ -124,7 +124,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.model
-    command: sh -c "export PYTHONPATH=/app && celery -A celery_app worker -l info -E"
+    command: sh -c "export PYTHONPATH=/app && celery -A celery_app worker -l info -E -Q embeddings_queue"
     networks:
       - app_network
     environment:
