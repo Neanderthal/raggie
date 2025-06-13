@@ -16,6 +16,7 @@ app = Celery(
     "tasks",
     broker=f"amqp://guest:guest@{os.getenv('RABBITMQ_HOST', 'localhost')}:5672//",
     backend="rpc://",
+    task_default_queue="embeddings_queue"
 )
 
 logger = logging.getLogger(__name__)

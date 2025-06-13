@@ -14,7 +14,11 @@ embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
 embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
 
 
-@celery_app.task(bind=True, name="model_app.tasks.text_to_embeddings")
+@celery_app.task(
+    bind=True,
+    name="model_app.tasks.text_to_embeddings",
+    queue="embeddings_queue"
+)
 def texts_to_embeddings(
     texts: list[str],
     username: str,
