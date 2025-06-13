@@ -3,18 +3,27 @@ import logging
 from typing import Optional, List, Tuple
 from openai import AsyncOpenAI
 from model_app.core.rag import rag_query
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from the model_app directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Configure OpenAI client for chat model
 # Use different URLs for Docker vs local development
-# Configure OpenAI client for chat model
-chat_client = AsyncOpenAI(
-    api_key="dummy-key",
-    base_url=os.getenv("CHAT_MODEL_URL", "http://localhost:8000/v1"),
-    timeout=30.0
-)
+# Initialize client lazily to avoid import-time errors
+chat_client = None
+
+def get_chat_client():
+    global chat_client
+    if chat_client is None:
+        chat_client = AsyncOpenAI(
+            api_key="dummy-key", base_url=os.getenv("CHAT_MODEL_URL"), timeout=30.0
+        )
+    return chat_client
 
 
 def build_system_prompt() -> str:
@@ -22,6 +31,7 @@ def build_system_prompt() -> str:
 Use only the context to answer. If the answer is not contained in the provided context,
 reply with "The information is not available in the provided context."
 Provide clear and concise answers in the same language as the user's question."""
+
 
 def build_user_prompt(chunks: List[str], user_query: str) -> str:
     """Build a prompt for the chat model using RAG context chunks."""
@@ -55,11 +65,11 @@ async def get_chat_response(
     full_docs = [doc[0] for doc in documents_found]
     logger.info(f"Using {len(full_docs)} documents for response")
 
-    response = await chat_client.chat.completions.create(
+    response = await get_chat_client().chat.completions.create(
         model="chat-model",
         messages=[
             {"role": "system", "content": build_system_prompt()},
-            {"role": "user", "content": build_user_prompt(full_docs, question)}
+            {"role": "user", "content": build_user_prompt(full_docs, question)},
         ],
         temperature=0.7,
         max_tokens=512,
@@ -74,7 +84,7 @@ async def chat(username: str = "", scope_name: str = ""):
 
     while True:
         try:
-            question = input("Ask a question: ").encode('utf-8').decode('utf-8')
+            question = input("Ask a question: ").encode("utf-8").decode("utf-8")
             if question.lower() == "exit":
                 break
 

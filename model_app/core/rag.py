@@ -11,15 +11,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-# Configure OpenAI client for embedding model
-# Use different URLs for Docker vs local development
-# Configure OpenAI client for embedding model
-embedding_client = AsyncOpenAI(
-    api_key="dummy-key",
-    base_url=os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8000/v1"),
-    timeout=30.0
-)
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# Initialize client lazily to avoid import-time errors
+embedding_client = None
+
+def get_embedding_client():
+    global embedding_client
+    if embedding_client is None:
+        embedding_client = AsyncOpenAI(
+            api_key="dummy-key", base_url=os.getenv("EMBEDDING_MODEL_URL"), timeout=30.0
+        )
+    return embedding_client
 
 
 async def rag_query(
