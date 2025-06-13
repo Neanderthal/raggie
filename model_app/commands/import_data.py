@@ -13,7 +13,7 @@ from model_app.core.document_reader import (
 
 
 app = Celery(
-    "tasks",
+    "model_app.tasks",
     broker=f"amqp://guest:guest@{os.getenv('RABBITMQ_HOST', 'localhost')}:5672//",
     backend="rpc://",
     task_default_queue="embeddings_queue"
@@ -110,8 +110,9 @@ def import_data(data_source, username: str, scope_name: str):
                 logger.info(f"Processed {len(chunks)} chunks from {fp}")
 
                 app.send_task(
-                    "tasks.texts_to_embeddings",
+                    "model_app.tasks.text_to_embeddings",
                     args=[texts, username, scope_name],
+                    queue="embeddings_queue"
                 )
                 logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
             except Exception as e:
@@ -122,7 +123,8 @@ def import_data(data_source, username: str, scope_name: str):
         texts = process_file(data_source)
         logger.info(f"Processed {len(texts)} chunks from {data_source}")
         app.send_task(
-            "tasks.texts_to_embeddings",
+            "model_app.tasks.text_to_embeddings",
             args=[texts, username, scope_name],
+            queue="embeddings_queue"
         )
         logger.info(f"Sent {len(texts)} chunks to Celery for embedding")
