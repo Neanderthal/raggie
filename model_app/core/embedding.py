@@ -27,7 +27,10 @@ class CustomLlamaEmbeddings(Embeddings):
             )
             res.raise_for_status()
             data = res.json()
-            embeddings.append(data[0]["embedding"])
+            embedding = data[0]["embedding"]
+            if isinstance(embedding[0], (list, tuple)):  # Flatten if multi-dimensional
+                embedding = [item for sublist in embedding for item in sublist]
+            embeddings.append(embedding)
         return embeddings
 
     def embed_query(self, text):
@@ -45,8 +48,8 @@ class CustomLlamaEmbeddings(Embeddings):
                 data = response.json()
                 # Flatten the embedding if it's nested
                 embedding = data[0]["embedding"]
-                if isinstance(embedding[0], list):
-                    embedding = embedding[0]
+                if isinstance(embedding[0], (list, tuple)):  # Flatten if multi-dimensional
+                    embedding = [item for sublist in embedding for item in sublist]
                 embeddings.append(embedding)
         return embeddings
 
