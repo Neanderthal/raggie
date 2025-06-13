@@ -15,9 +15,7 @@ embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
 
 
 @celery_app.task(
-    bind=True,
-    name="model_app.tasks.text_to_embeddings",
-    queue="embeddings_queue"
+    bind=True, name="model_app.tasks.text_to_embeddings", queue="embeddings_queue"
 )
 def texts_to_embeddings(
     texts: list[str],
@@ -30,7 +28,7 @@ def texts_to_embeddings(
     os.environ["OPENAI_API_BASE"] = embedding_url
     embedding_model = OpenAIEmbeddings(
         model=embedding_model_name,
-        openai_api_key="dummy-key"  # Required parameter but not used with local model
+        openai_api_key="dummy-key",  # Required parameter but not used with local model
     )
     # Semantic-aware text splitting (fast fallback option)
     # splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
