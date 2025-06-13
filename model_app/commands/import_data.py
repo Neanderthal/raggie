@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -17,40 +18,68 @@ app = Celery(
     backend="rpc://",
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _log_file_stats(file_path: str, chunks: List[str]) -> None:
+    """Helper to log file processing statistics"""
+    try:
+        file_size = os.path.getsize(file_path) / 1024  # KB
+        avg_chunk_len = sum(len(c) for c in chunks) / max(1, len(chunks))
+        logger.debug(
+            f"File stats - Path: {file_path}, "
+            f"Size: {file_size:.2f}KB, "
+            f"Chunks: {len(chunks)}, "
+            f"Avg chunk length: {avg_chunk_len:.1f} chars"
+        )
+    except Exception as e:
+        logger.warning(f"Could not calculate file stats for {file_path}: {str(e)}")
+
 
 def process_file(file_path: str) -> List[str]:
     """Process different file types to extract text chunks"""
     file_extension = Path(file_path).suffix.lower()
 
-    if file_extension == ".pdf":
-        return chunk_text(read_pdf_file(file_path))
-    elif file_extension == ".md":
-        return chunk_text(read_markdown_file(file_path))
-    elif file_extension in [".docx", ".doc"]:
-        if file_extension == ".doc":
-            raise ValueError(
-                "Legacy .doc files are not supported. Please convert to .docx format."
-            )
-        return chunk_text(read_docx_file(file_path))
-    elif file_extension == ".html":
-        with open(file_path, "r", encoding="utf-8") as f:
-            soup = BeautifulSoup(f.read(), "html.parser")
-            return chunk_text(soup.get_text())
-    elif file_extension == ".txt":
-        encodings = ["utf-8", "windows-1251", "cp1251"]
-        for encoding in encodings:
-            try:
-                with open(file_path, "r", encoding=encoding) as f:
-                    return chunk_text(f.read())
-            except UnicodeDecodeError:
-                continue
-        return []
-    else:
-        raise ValueError(f"Unsupported file format: {file_extension}")
+    logger.debug(f"Processing file with extension: {file_extension}")
+    try:
+        if file_extension == ".pdf":
+            chunks = chunk_text(read_pdf_file(file_path))
+        elif file_extension == ".md":
+            chunks = chunk_text(read_markdown_file(file_path))
+        elif file_extension in [".docx", ".doc"]:
+            if file_extension == ".doc":
+                raise ValueError(
+                    "Legacy .doc files are not supported. Please convert to .docx format."
+                )
+            chunks = chunk_text(read_docx_file(file_path))
+        elif file_extension == ".html":
+            with open(file_path, "r", encoding="utf-8") as f:
+                soup = BeautifulSoup(f.read(), "html.parser")
+                chunks = chunk_text(soup.get_text())
+        elif file_extension == ".txt":
+            encodings = ["utf-8", "windows-1251", "cp1251"]
+            for encoding in encodings:
+                try:
+                    with open(file_path, "r", encoding=encoding) as f:
+                        chunks = chunk_text(f.read())
+                        break
+                except UnicodeDecodeError:
+                    continue
+            else:
+                chunks = []
+        else:
+            raise ValueError(f"Unsupported file format: {file_extension}")
+
+        _log_file_stats(file_path, chunks)
+        return chunks
+    except Exception as e:
+        logger.error(f"Error processing file {file_path}: {str(e)}")
+        raise
 
 
 def import_data(data_source, username: str, scope_name: str):
     """Import data with user and scope metadata"""
+    logger.info(f"Starting data import from {data_source} for user {username}, scope {scope_name}")
 
     if os.path.isdir(data_source):
         file_paths = []
@@ -66,22 +95,33 @@ def import_data(data_source, username: str, scope_name: str):
                 ]:
                     file_paths.append(file_path)
 
+        logger.info(
+            f"Found {len(file_paths)} supported files to process in directory {data_source}\n"
+            f"File types: {', '.join(sorted({Path(fp).suffix.lower() for fp in file_paths}))}"
+        )
         # Process all files and flatten the list of chunks
         texts = []
         for fp in file_paths:
             try:
-                texts.extend(process_file(fp))
+                logger.info(f"Processing file: {fp}")
+                chunks = process_file(fp)
+                texts.extend(chunks)
+                logger.info(f"Processed {len(chunks)} chunks from {fp}")
 
                 app.send_task(
                     "tasks.texts_to_embeddings",
                     args=[texts, username, scope_name],
                 )
+                logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
             except Exception as e:
-                print(f"Error processing {fp}: {str(e)}")
+                logger.error(f"Error processing {fp}: {str(e)}")
                 continue
     else:
+        logger.info(f"Processing single file: {data_source}")
         texts = process_file(data_source)
+        logger.info(f"Processed {len(texts)} chunks from {data_source}")
         app.send_task(
             "tasks.texts_to_embeddings",
             args=[texts, username, scope_name],
         )
+        logger.info(f"Sent {len(texts)} chunks to Celery for embedding")
