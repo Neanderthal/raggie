@@ -10,6 +10,7 @@ from model_app.core.document_reader import (
     read_docx_file,
 )
 from model_app.core.rag import chunk_text
+from model_app.utils.logging_decorators import log_function_call, log_file_processing, log_data_import
 
 
 app = Celery(
@@ -22,6 +23,7 @@ app = Celery(
 logger = logging.getLogger(__name__)
 
 
+@log_function_call
 def _log_file_stats(file_path: str, chunks: List[str]) -> None:
     """Helper to log file processing statistics"""
     try:
@@ -37,6 +39,7 @@ def _log_file_stats(file_path: str, chunks: List[str]) -> None:
         logger.warning(f"Could not calculate file stats for {file_path}: {str(e)}")
 
 
+@log_file_processing
 def process_file(file_path: str) -> List[str]:
     """Process different file types to extract text chunks"""
     file_extension = Path(file_path).suffix.lower()
@@ -89,11 +92,9 @@ def process_file(file_path: str) -> List[str]:
         ) from e  # Maintain original error context
 
 
+@log_data_import
 def import_data(data_source, username: str, scope_name: str):
     """Import data with user and scope metadata"""
-    logger.info(
-        f"Starting data import from {data_source} for user {username}, scope {scope_name}"
-    )
 
     if os.path.isdir(data_source):
         file_paths = []
@@ -136,9 +137,7 @@ def import_data(data_source, username: str, scope_name: str):
                 logger.exception(f"Unexpected error processing {fp}")
                 raise RuntimeError("Critical error - aborting import") from e
     else:
-        logger.info(f"Processing single file: {data_source}")
         texts = process_file(data_source)
-        logger.info(f"Processed {len(texts)} chunks from {data_source}")
         app.send_task(
             "model_app.tasks.text_to_embeddings",
             args=(texts, username, scope_name),  # Changed to tuple
