@@ -46,6 +46,8 @@ Question: {user_query}"""
 async def get_chat_response(
     question: str, username: Optional[str] = None, scope_name: Optional[str] = None
 ) -> Tuple[str, List[str]]:
+    if not question:
+        raise ValueError("Question cannot be empty")
     """Get a chat response using RAG (function call interface).
 
     Args:

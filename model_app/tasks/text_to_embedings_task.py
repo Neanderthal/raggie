@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+import httpx
 from typing import List, Dict, Any
 from langchain_postgres import PGVector
 from model_app.core.embedding import generate_embeddings, CustomLlamaEmbeddings

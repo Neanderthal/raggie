@@ -1,17 +1,22 @@
 import os
 import re
+import logging
+import asyncio
 from typing import Tuple
 import requests
 import httpx
 from langchain.embeddings.base import Embeddings
 from dotenv import load_dotenv
-import os
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from the model_app directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
 embedding_url = os.getenv("EMBEDDING_MODEL_URL")
+if not embedding_url:
+    raise ValueError("EMBEDDING_MODEL_URL environment variable must be set")
 
 
 class CustomLlamaEmbeddings(Embeddings):
@@ -67,6 +72,16 @@ class CustomLlamaEmbeddings(Embeddings):
 
 
 async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
+    """Generate embeddings with retry logic and health checking.
+    
+    Args:
+        text: Input text to embed
+    Returns:
+        Tuple of (clean_text, embedding_vector)
+    Raises:
+        ConnectionError: If embedding service is unavailable
+        ValueError: If embeddings couldn't be generated
+    """
     """Generate embeddings with retry logic and health checking."""
     embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
     text_clean = text.strip()

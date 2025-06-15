@@ -50,11 +50,13 @@ async def rag_query(
         _, embedding = await generate_embeddings(query)
 
         # Query Postgres vector store
-        results = await get_rag_documents(
+        raw_results = await get_rag_documents(
             scope=scope,
             user=user,
             query_embedding=embedding,
         )
+        # Convert from (content, embedding, similarity) to (content, similarity)
+        results = [(content, similarity) for content, _, similarity in raw_results]
 
         # Log results
         logger.info(f"Query: '{query}' - Found {len(results)} matching documents")
