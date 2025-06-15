@@ -51,6 +51,9 @@ async def main():
     import_data_parser.add_argument(
         "--scope", type=str, required=True, help="Scope for data organization"
     )
+    import_data_parser.add_argument(
+        "--document-name", type=str, required=False, help="Optional document name (defaults to filename)"
+    )
     import_data_parser.set_defaults(func=import_data)
 
     # chat command
@@ -79,7 +82,7 @@ async def main():
         elif args.command == Command.CHAT.value:
             await args.func(username=args.username, scope_name=args.scope)
         elif args.command == Command.IMPORT_DATA.value:
-            args.func(args.data_source, username=args.username, scope_name=args.scope)
+            args.func(args.data_source, username=args.username, scope_name=args.scope, document_name=args.document_name)
     else:
         print("Invalid command. Use '--help' for assistance.")
 
