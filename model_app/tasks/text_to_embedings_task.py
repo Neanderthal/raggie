@@ -25,12 +25,13 @@ def texts_to_embeddings(
     scope_name: str,
     document_name: str = "unknown",
     document_id: Optional[str] = None,
-    model_name: str = embedding_model_name,
 ):
-    logger.info(f"Starting embeddings task for user {username}, scope {scope_name}, document {document_name}")
+    logger.info(
+        f"Starting embeddings task for user {username}, scope {scope_name}, document {document_name}"
+    )
     if document_id:
         logger.info(f"Processing chunks for document ID: {document_id}")
-    
+
     # Ensure user and scope exist in the database
     try:
         user_id = asyncio.run(get_or_create_user(username))
@@ -45,24 +46,22 @@ def texts_to_embeddings(
     for text in texts:
         try:
             _, embedding = asyncio.run(generate_embeddings(text))
-            
+
             # Create metadata with document ID if available
             metadata = {
-                "username": username, 
+                "username": username,
                 "scope": scope_name,
-                "document_name": document_name
+                "scope_id": scope_id,
+                "user_id": user_id,
+                "document_name": document_name,
             }
-            
+
             # Add document_id to metadata if provided
             if document_id:
                 metadata["document_id"] = document_id
-                
+
             embeddings.append(
-                {
-                    "text": text,
-                    "embedding": embedding,
-                    "metadata": metadata
-                }
+                {"text": text, "embedding": embedding, "metadata": metadata}
             )
         except ConnectionError:
             # Bubbled-up + Non-Recoverable
@@ -89,7 +88,9 @@ def texts_to_embeddings(
     logger.info(f"Storing {len(embeddings)} embeddings in database")
     try:
         ids = asyncio.run(store_embeddings(embeddings))
-        logger.info(f"Successfully stored {len(embeddings)} document chunks in database")
+        logger.info(
+            f"Successfully stored {len(embeddings)} document chunks in database"
+        )
         logger.debug(f"First document chunk ID: {ids[0] if ids else 'none'}")
     except Exception as e:
         logger.error(f"Failed to store documents: {str(e)}")
