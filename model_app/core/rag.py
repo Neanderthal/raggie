@@ -1,8 +1,10 @@
 import logging
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any, Optional
+from uuid import uuid4
 from dotenv import load_dotenv
 from langchain_postgres import PGVector
+from langchain_core.documents import Document
 from model_app.core.embedding import generate_embeddings, CustomLlamaEmbeddings
 
 # Configure logging
@@ -121,3 +123,43 @@ def chunk_text(text: str) -> list[str]:
         chunks.append(current_chunk.strip())
 
     return chunks
+
+
+async def store_embeddings(embeddings_data: List[Dict[str, Any]]) -> List[str]:
+    """
+    Store embeddings in the PGVector database.
+    
+    Args:
+        embeddings_data: List of dictionaries containing text, embedding, and metadata
+        
+    Returns:
+        List of document IDs
+    """
+    try:
+        # Get PGVector client
+        vectorstore = get_pgvector_client()
+        
+        # Convert to LangChain documents
+        documents = []
+        for emb in embeddings_data:
+            documents.append(
+                Document(
+                    page_content=emb["text"],
+                    metadata=emb["metadata"],
+                    embedding=emb["embedding"],
+                )
+            )
+
+        # Generate UUIDs for each document
+        ids = [str(uuid4()) for _ in documents]
+        
+        # Store documents with their IDs
+        stored_ids = vectorstore.add_documents(documents=documents, ids=ids)
+        
+        logger.info(f"Successfully stored {len(documents)} documents in vector store")
+        logger.debug(f"First document ID: {stored_ids[0] if stored_ids else 'none'}")
+        
+        return stored_ids
+    except Exception as e:
+        logger.error(f"Failed to store documents: {str(e)}")
+        raise
