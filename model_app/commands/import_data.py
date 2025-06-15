@@ -118,10 +118,8 @@ def import_data(data_source, username: str, scope_name: str):
         texts = []
         for fp in file_paths:
             try:
-                logger.info(f"Processing file: {fp}")
                 chunks = process_file(fp)
                 texts.extend(chunks)
-                logger.info(f"Processed {len(chunks)} chunks from {fp}")
 
                 app.send_task(
                     "model_app.tasks.text_to_embeddings",
