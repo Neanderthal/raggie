@@ -1,9 +1,9 @@
 import logging
 import os
+from typing import List, Tuple
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
-from model_app.db.db import get_rag_documents
-from model_app.core.embedding import generate_embeddings
+from langchain_postgres import PGVector
+from model_app.core.embedding import generate_embeddings, CustomLlamaEmbeddings
 
 # Configure logging
 logging.basicConfig(
@@ -13,17 +13,26 @@ logger = logging.getLogger(__name__)
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-# Initialize client lazily to avoid import-time errors
-embedding_client = None
+# Initialize PGVector client lazily
+_pgvector_client = None
 
-
-def get_embedding_client():
-    global embedding_client
-    if embedding_client is None:
-        embedding_client = AsyncOpenAI(
-            api_key="dummy-key", base_url=os.getenv("EMBEDDING_MODEL_URL"), timeout=30.0
+def get_pgvector_client():
+    global _pgvector_client
+    if _pgvector_client is None:
+        # Create connection string
+        connection_str = f"postgresql+psycopg://{os.getenv('DB_USER', 'pgvector')}:{os.getenv('DB_PASSWORD', 'password')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'pgvector_rag')}"
+        
+        # Initialize embedding model
+        embedding_model = CustomLlamaEmbeddings(base_url=os.getenv("EMBEDDING_MODEL_URL"))
+        
+        # Create PGVector client
+        _pgvector_client = PGVector(
+            collection_name="rag_docs",
+            connection=connection_str,
+            embeddings=embedding_model,
+            use_jsonb=True,
         )
-    return embedding_client
+    return _pgvector_client
 
 
 async def rag_query(
@@ -32,8 +41,8 @@ async def rag_query(
     user: str | None = None,
     k: int = 5,
     similarity_threshold: float = 0.7,
-) -> list[tuple[str, float]]:
-    """Query RAG documents using Postgres vector store.
+) -> List[Tuple[str, float]]:
+    """Query RAG documents using PGVector.
 
     Args:
         query: Search query string
@@ -46,17 +55,29 @@ async def rag_query(
         List of tuples containing (document_content, similarity_score)
     """
     try:
-        # Generate embedding for the query
+        # Get PGVector client
+        vector_store = get_pgvector_client()
+        
+        # Build filter based on scope and user
+        filter_dict = {}
+        if scope:
+            filter_dict["metadata.scope"] = scope
+        if user:
+            filter_dict["metadata.username"] = user
+            
+        # Generate embedding for the query (we'll use the embedding directly)
         _, embedding = await generate_embeddings(query)
-
-        # Query Postgres vector store
-        raw_results = await get_rag_documents(
-            scope=scope,
-            user=user,
-            query_embedding=embedding,
+        
+        # Query PGVector with similarity search
+        results_with_scores = vector_store.similarity_search_with_score_by_vector(
+            embedding=embedding,
+            k=k,
+            filter=filter_dict if filter_dict else None,
+            score_threshold=similarity_threshold
         )
-        # Convert from (content, embedding, similarity) to (content, similarity)
-        results = [(content, similarity) for content, _, similarity in raw_results]
+        
+        # Convert from (Document, score) to (content, similarity)
+        results = [(doc.page_content, score) for doc, score in results_with_scores]
 
         # Log results
         logger.info(f"Query: '{query}' - Found {len(results)} matching documents")
@@ -72,11 +93,9 @@ async def rag_query(
     except ConnectionError:
         logger.warning("Embedding service unavailable")
         raise
-    except Exception:
-        logger.exception("System error in RAG")
+    except Exception as e:
+        logger.exception(f"System error in RAG: {str(e)}")
         raise
-    finally:
-        pass
 
 
 def chunk_text(text: str) -> list[str]:
