@@ -1,5 +1,6 @@
 python-dotenv
 psycopg2-binary
+asyncpg
 black
 pgvector
 PyPDF2
@@ -15,3 +16,4 @@ langchain_community
 langchain_postgres
 langchain_core
 langchain_experimental
+httpx==0.26.0

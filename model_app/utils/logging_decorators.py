@@ -3,7 +3,7 @@ import functools
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, List, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast
 
 F = TypeVar('F', bound=Callable[..., Any])
 

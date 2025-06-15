@@ -3,6 +3,10 @@ import os
 from typing import Tuple
 import asyncpg
 from pgvector.asyncpg import register_vector
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 
 async def get_connection() -> asyncpg.Connection:

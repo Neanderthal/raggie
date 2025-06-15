@@ -4,26 +4,28 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-  gcc \
-  python3-dev \
-  && rm -rf /var/lib/apt/lists/*
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 RUN pip install uv
 
 # Copy requirements
-COPY requirements.txt ./
+COPY model_app/requirements.txt ./
 
 # Install dependencies
-RUN uv pip install -r requirements.txt --system
+RUN uv pip install -r requirements.txt --system && \
+    uv pip install psycopg[binary] --system
+RUN uv pip install langchain-community langchain-postgres langchain-experimental --system --no-cache-dir
 
 # Copy the rest of the application
-COPY ./model_app /app
+COPY ./model_app /app/model_app
 COPY ./celery_app /app/celery_app
-COPY ./setup.py /app/
 
-# Make the model_app package installable
-RUN pip install -e .
+# Set up Python path
+ENV PYTHONPATH=/app
 
-# Set up Celery
-WORKDIR /app/celery_app
+# Set working directory to app root
+WORKDIR /app

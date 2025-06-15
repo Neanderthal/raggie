@@ -6,7 +6,7 @@ from model_app.core.rag import rag_query
 from dotenv import load_dotenv
 
 # Load environment variables from the model_app directory
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 # Configure OpenAI client for chat model
 # Use different URLs for Docker vs local development
 # Initialize client lazily to avoid import-time errors
+
+
 chat_client = None
+
 
 def get_chat_client():
     global chat_client
@@ -61,7 +64,7 @@ async def get_chat_response(
         query=question,
         scope=scope_name,
         user=username,
-        k=3  # Get top 3 most relevant documents
+        k=3,  # Get top 3 most relevant documents
     )
     full_docs = [doc[0] for doc in documents_found]  # Extract just the document content
     logger.info(f"Using {len(full_docs)} documents for response")
@@ -82,35 +85,3 @@ async def get_chat_response(
     except Exception as e:
         logger.error(f"Chat request failed: {str(e)}")
         return "An error occurred while generating the response", full_docs
-
-
-async def chat(username: str = "", scope_name: str = ""):
-    """Interactive chat interface (maintains backward compatibility with app.py)."""
-    print("Chat started. Type 'exit' to end the chat.")
-    print(f"Optional filters - scope: {scope_name or 'all'}, user: {username or 'any'}")
-
-    while True:
-        try:
-            question = input("Ask a question: ").encode("utf-8").decode("utf-8")
-            if question.lower() == "exit":
-                break
-
-            answer, _ = await get_chat_response(
-                question, username or None, scope_name or None
-            )
-            print(f"You Asked: {question}")
-            print(f"Answer: {answer}")
-        except UnicodeError as e:
-            # New + Recoverable error (bad user input)
-            print(f"Invalid input encoding: {e}. Please try different text.")
-            continue
-        except ConnectionError:
-            # Bubbled-up + Possibly Recoverable
-            print("Chat service unavailable. Please try again later")
-            break
-        except Exception:
-            # Bubbled-up + Non-Recoverable
-            print("System error - please restart chat")
-            raise
-
-    print("Chat ended.")

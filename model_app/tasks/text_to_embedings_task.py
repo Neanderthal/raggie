@@ -2,7 +2,7 @@ import os
 import logging
 import asyncio
 import httpx
-from typing import List, Dict, Any
+from typing import List
 from langchain_postgres import PGVector
 from model_app.core.embedding import generate_embeddings, CustomLlamaEmbeddings
 from celery_app import celery_app
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
 embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
+
 
 @celery_app.task(
     bind=True, name="model_app.tasks.text_to_embeddings", queue="embeddings_queue"
@@ -24,21 +25,20 @@ def texts_to_embeddings(
     model_name: str = embedding_model_name,
 ):
     logger.info(f"Starting embeddings task for user {username}, scope {scope_name}")
-    
+
     # Generate embeddings for each text chunk
     embeddings = []
     for text in texts:
         try:
             _, embedding = asyncio.run(generate_embeddings(text))
-            embeddings.append({
-                "text": text,
-                "embedding": embedding,
-                "metadata": {
-                    "username": username,
-                    "scope": scope_name
+            embeddings.append(
+                {
+                    "text": text,
+                    "embedding": embedding,
+                    "metadata": {"username": username, "scope": scope_name},
                 }
-            })
-        except ConnectionError as e:
+            )
+        except ConnectionError:
             # Bubbled-up + Non-Recoverable
             logger.critical("Embedding service unreachable")
             raise  # Let Celery handle retry logic
@@ -49,7 +49,7 @@ def texts_to_embeddings(
             )
             continue  # Try next chunk
         except Exception as e:
-            # Bubbled-up + Non-Recoverable 
+            # Bubbled-up + Non-Recoverable
             logger.exception("Unexpected embedding processing error")
             raise RuntimeError("Failed to process embeddings") from e
 
@@ -62,7 +62,7 @@ def texts_to_embeddings(
     # Connect to pgvector
     connection_str = f"postgresql+psycopg://{os.getenv('DB_USER', 'pgvector')}:{os.getenv('DB_PASSWORD', 'password')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'pgvector_rag')}"
     logger.info(f"Connecting to database at {os.getenv('DB_HOST', 'db')}")
-    
+
     embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
     vectorstore = PGVector(
         collection_name="rag_docs",
@@ -77,21 +77,21 @@ def texts_to_embeddings(
         # Convert to LangChain documents and store with unique IDs
         from langchain_core.documents import Document
         from uuid import uuid4
-        
+
         documents = []
         for idx, emb in enumerate(embeddings):
             documents.append(
                 Document(
                     page_content=emb["text"],
                     metadata=emb["metadata"],
-                    embedding=emb["embedding"]
+                    embedding=emb["embedding"],
                 )
             )
-        
+
         # Generate UUIDs for each document
         ids = [str(uuid4()) for _ in documents]
         ids = vectorstore.add_documents(documents=documents, ids=ids)
-        
+
         logger.info(f"Successfully stored {len(documents)} documents in vector store")
         logger.debug(f"First document ID: {ids[0] if ids else 'none'}")
     except Exception as e:
