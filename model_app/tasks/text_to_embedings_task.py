@@ -22,9 +22,10 @@ def texts_to_embeddings(
     texts: List[str],
     username: str,
     scope_name: str,
+    document_name: str = "unknown",
     model_name: str = embedding_model_name,
 ):
-    logger.info(f"Starting embeddings task for user {username}, scope {scope_name}")
+    logger.info(f"Starting embeddings task for user {username}, scope {scope_name}, document {document_name}")
 
     # Generate embeddings for each text chunk
     embeddings = []
@@ -35,7 +36,11 @@ def texts_to_embeddings(
                 {
                     "text": text,
                     "embedding": embedding,
-                    "metadata": {"username": username, "scope": scope_name},
+                    "metadata": {
+                        "username": username, 
+                        "scope": scope_name,
+                        "document_name": document_name
+                    },
                 }
             )
         except ConnectionError:

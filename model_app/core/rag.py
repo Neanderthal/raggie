@@ -41,6 +41,7 @@ async def rag_query(
     query: str,
     scope: str | None = None,
     user: str | None = None,
+    document_name: str | None = None,
     k: int = 5,
     similarity_threshold: float = 0.7,
 ) -> List[Tuple[str, float]]:
@@ -50,6 +51,7 @@ async def rag_query(
         query: Search query string
         scope: Optional scope filter
         user: Optional user filter
+        document_name: Optional document name filter
         k: Number of results to return
         similarity_threshold: Minimum similarity score (0-1)
 
@@ -60,12 +62,14 @@ async def rag_query(
         # Get PGVector client
         vector_store = get_pgvector_client()
         
-        # Build filter based on scope and user
+        # Build filter based on scope, user, and document name
         filter_dict = {}
         if scope:
             filter_dict["metadata.scope"] = scope
         if user:
             filter_dict["metadata.username"] = user
+        if document_name:
+            filter_dict["metadata.document_name"] = document_name
             
         # Generate embedding for the query (we'll use the embedding directly)
         _, embedding = await generate_embeddings(query)
