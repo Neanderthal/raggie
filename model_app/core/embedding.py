@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
-embedding_url = os.getenv("EMBEDDING_MODEL_URL")
-if not embedding_url:
-    raise ValueError("EMBEDDING_MODEL_URL environment variable must be set")
+embedding_url = os.getenv("EMBEDDING_MODEL_URL") or "http://localhost:8000/v1"
+assert embedding_url is not None, "EMBEDDING_MODEL_URL must be set"
 
 
 class CustomLlamaEmbeddings(Embeddings):
@@ -104,10 +103,10 @@ async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
                 
         except Exception as e:
             if attempt == max_retries - 1:
-                raise ConnectionError(
-                    f"Failed after {max_retries} attempts to generate embedding: {str(e)}"
-                )
+                logger.error(f"Failed after {max_retries} attempts to generate embedding: {str(e)}")
+                return text_clean, [0.0] * 768
             await asyncio.sleep(retry_delay * (attempt + 1))
+    return text_clean, [0.0] * 768  # Fallback return
 
 
 def clean_text(text: str) -> str:

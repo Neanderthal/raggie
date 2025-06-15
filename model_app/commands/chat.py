@@ -67,16 +67,22 @@ async def get_chat_response(
     full_docs = [doc[0] for doc in documents_found]  # Extract just the document content
     logger.info(f"Using {len(full_docs)} documents for response")
 
-    response = await get_chat_client().chat.completions.create(
-        model="chat-model",
-        messages=[
-            {"role": "system", "content": build_system_prompt()},
-            {"role": "user", "content": build_user_prompt(full_docs, question)},
-        ],
-        temperature=0.7,
-        max_tokens=512,
-    )
-    return response.choices[0].message.content, full_docs
+    try:
+        response = await get_chat_client().chat.completions.create(
+            model="chat-model",
+            messages=[
+                {"role": "system", "content": build_system_prompt()},
+                {"role": "user", "content": build_user_prompt(full_docs, question)},
+            ],
+            temperature=0.7,
+            max_tokens=512,
+        )
+        if not response.choices or not response.choices[0].message.content:
+            return "No response from the chat model", full_docs
+        return response.choices[0].message.content.strip(), full_docs
+    except Exception as e:
+        logger.error(f"Chat request failed: {str(e)}")
+        return "An error occurred while generating the response", full_docs
 
 
 async def chat(username: str = "", scope_name: str = ""):
