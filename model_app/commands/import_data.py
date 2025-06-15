@@ -44,7 +44,6 @@ def process_file(file_path: str) -> List[str]:
     """Process different file types to extract text chunks"""
     file_extension = Path(file_path).suffix.lower()
 
-    logger.debug(f"Processing file with extension: {file_extension}")
     try:
         if file_extension == ".pdf":
             chunks = chunk_text(read_pdf_file(file_path))
@@ -110,10 +109,6 @@ def import_data(data_source, username: str, scope_name: str):
                 ]:
                     file_paths.append(file_path)
 
-        logger.info(
-            f"Found {len(file_paths)} supported files to process in directory {data_source}\n"
-            f"File types: {', '.join(sorted({Path(fp).suffix.lower() for fp in file_paths}))}"
-        )
         # Process all files and flatten the list of chunks
         texts = []
         for fp in file_paths:
@@ -127,7 +122,6 @@ def import_data(data_source, username: str, scope_name: str):
                     kwargs={},  # Explicit empty kwargs
                     queue="embeddings_queue",
                 )
-                logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
             except (ValueError, IOError) as e:
                 logger.error(f"Specific error processing {fp}: {str(e)}")
                 continue
@@ -142,4 +136,3 @@ def import_data(data_source, username: str, scope_name: str):
             kwargs={},  # Explicit empty kwargs
             queue="embeddings_queue",
         )
-        logger.info(f"Sent {len(texts)} chunks to Celery for embedding")
