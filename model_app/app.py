@@ -85,4 +85,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"Fatal error: {str(e)}", file=sys.stderr)
+        sys.exit(1)

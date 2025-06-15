@@ -67,7 +67,7 @@ async def rag_query(
 
     except ValueError as e:
         logger.error(f"Invalid RAG query parameters: {str(e)}")
-        return "Invalid query parameters - please try again"
+        return [("Invalid query parameters", 0.0)]  # Maintain expected return type
     except ConnectionError as e:
         logger.error(f"Embedding service unavailable: {str(e)}")
         return "Service temporarily unavailable - please try again later"

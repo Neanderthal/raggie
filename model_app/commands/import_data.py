@@ -122,9 +122,12 @@ def import_data(data_source, username: str, scope_name: str):
                     queue="embeddings_queue"
                 )
                 logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
-            except Exception as e:
-                logger.error(f"Error processing {fp}: {str(e)}")
+            except (ValueError, IOError) as e:
+                logger.error(f"Specific error processing {fp}: {str(e)}")
                 continue
+            except Exception as e:
+                logger.exception(f"Unexpected error processing {fp}")
+                raise RuntimeError("Critical error - aborting import") from e
     else:
         logger.info(f"Processing single file: {data_source}")
         texts = process_file(data_source)

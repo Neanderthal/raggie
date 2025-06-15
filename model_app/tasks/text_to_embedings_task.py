@@ -37,9 +37,15 @@ def texts_to_embeddings(
                     "scope": scope_name
                 }
             })
+        except ConnectionError as e:
+            logger.error(f"Embedding service connection failed: {str(e)}")
+            raise  # Non-recoverable - bubble up
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"Temporary embedding service error: {str(e)}")
+            continue  # Recoverable - try next chunk
         except Exception as e:
-            logger.error(f"Failed to generate embedding for text: {str(e)}")
-            continue
+            logger.exception("Unexpected embedding error")
+            raise RuntimeError("Critical embedding failure") from e
 
     if not embeddings:
         logger.error("No embeddings generated - aborting")
