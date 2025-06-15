@@ -79,7 +79,7 @@ async def main():
         elif args.command == Command.CHAT.value:
             await args.func(username=args.username, scope_name=args.scope)
         elif args.command == Command.IMPORT_DATA.value:
-            await args.func(args.data_source, username=args.username, scope_name=args.scope)
+            args.func(args.data_source, username=args.username, scope_name=args.scope)
     else:
         print("Invalid command. Use '--help' for assistance.")
 
