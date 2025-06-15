@@ -8,15 +8,15 @@ from model_app.core.document_reader import (
     read_pdf_file,
     read_markdown_file,
     read_docx_file,
-    chunk_text,
 )
+from model_app.core.rag import chunk_text
 
 
 app = Celery(
     "model_app.tasks",
     broker=f"amqp://guest:guest@{os.getenv('RABBITMQ_HOST', 'localhost')}:5672//",
     backend="rpc://",
-    task_default_queue="embeddings_queue"
+    task_default_queue="embeddings_queue",
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,9 @@ def process_file(file_path: str) -> List[str]:
 
 def import_data(data_source, username: str, scope_name: str):
     """Import data with user and scope metadata"""
-    logger.info(f"Starting data import from {data_source} for user {username}, scope {scope_name}")
+    logger.info(
+        f"Starting data import from {data_source} for user {username}, scope {scope_name}"
+    )
 
     if os.path.isdir(data_source):
         file_paths = []
@@ -124,7 +126,7 @@ def import_data(data_source, username: str, scope_name: str):
                     "model_app.tasks.text_to_embeddings",
                     args=(texts, username, scope_name),  # Changed to tuple
                     kwargs={},  # Explicit empty kwargs
-                    queue="embeddings_queue"
+                    queue="embeddings_queue",
                 )
                 logger.info(f"Sent {len(texts)} total chunks to Celery for embedding")
             except (ValueError, IOError) as e:
@@ -141,6 +143,6 @@ def import_data(data_source, username: str, scope_name: str):
             "model_app.tasks.text_to_embeddings",
             args=(texts, username, scope_name),  # Changed to tuple
             kwargs={},  # Explicit empty kwargs
-            queue="embeddings_queue"
+            queue="embeddings_queue",
         )
         logger.info(f"Sent {len(texts)} chunks to Celery for embedding")
