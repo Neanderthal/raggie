@@ -73,9 +73,15 @@ def process_file(file_path: str) -> List[str]:
 
         _log_file_stats(file_path, chunks)
         return chunks
-    except Exception as e:
-        logger.error(f"Error processing file {file_path}: {str(e)}")
+    except ValueError as e:
+        logger.error(f"Validation error processing {file_path}: {str(e)}")
         raise
+    except IOError as e:
+        logger.error(f"File access error for {file_path}: {str(e)}")
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error processing file %s", file_path)
+        raise RuntimeError(f"Failed to process {file_path}") from e
 
 
 def import_data(data_source, username: str, scope_name: str):

@@ -54,9 +54,15 @@ class CustomLlamaEmbeddings(Embeddings):
                     if isinstance(embedding[0], (list, tuple)):  
                         embedding = [item for sublist in embedding for item in sublist]
                     embeddings.append(embedding)
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"Embedding API error (status {e.response.status_code})")
+                    raise ConnectionError("Embedding service returned an error") from e
+                except httpx.RequestError as e:
+                    logger.error("Embedding service connection failed")
+                    raise ConnectionError("Could not connect to embedding service") from e
                 except Exception as e:
-                    logger.error(f"Error generating embedding: {str(e)}")
-                    raise
+                    logger.exception("Unexpected error generating embedding")
+                    raise RuntimeError("Failed to generate embedding") from e
         return embeddings
 
 

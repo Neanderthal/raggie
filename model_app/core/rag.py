@@ -65,8 +65,14 @@ async def rag_query(
             
         return results
 
+    except ValueError as e:
+        logger.error(f"Invalid RAG query parameters: {str(e)}")
+        return "Invalid query parameters - please try again"
+    except ConnectionError as e:
+        logger.error(f"Embedding service unavailable: {str(e)}")
+        return "Service temporarily unavailable - please try again later"
     except Exception as e:
-        logging.error(f"Error in RAG query: {str(e)}")
-        return f"Error processing your request: {str(e)}"
+        logger.exception("Unexpected error in RAG query")
+        return "An unexpected error occurred - our team has been notified"
     finally:
         pass
