@@ -38,14 +38,19 @@ def texts_to_embeddings(
                 }
             })
         except ConnectionError as e:
-            logger.error(f"Embedding service connection failed: {str(e)}")
-            raise  # Non-recoverable - bubble up
+            # Bubbled-up + Non-Recoverable
+            logger.critical("Embedding service unreachable")
+            raise  # Let Celery handle retry logic
         except httpx.HTTPStatusError as e:
-            logger.warning(f"Temporary embedding service error: {str(e)}")
-            continue  # Recoverable - try next chunk
+            # Bubbled-up + Possibly Recoverable
+            logger.warning(
+                f"Embedding service error ({e.response.status_code}): {str(e)}"
+            )
+            continue  # Try next chunk
         except Exception as e:
-            logger.exception("Unexpected embedding error")
-            raise RuntimeError("Critical embedding failure") from e
+            # Bubbled-up + Non-Recoverable 
+            logger.exception("Unexpected embedding processing error")
+            raise RuntimeError("Failed to process embeddings") from e
 
     if not embeddings:
         logger.error("No embeddings generated - aborting")

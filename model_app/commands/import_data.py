@@ -74,14 +74,19 @@ def process_file(file_path: str) -> List[str]:
         _log_file_stats(file_path, chunks)
         return chunks
     except ValueError as e:
+        # New + Non-Recoverable error (invalid input format)
         logger.error(f"Validation error processing {file_path}: {str(e)}")
         raise
     except IOError as e:
+        # Bubbled-up + Possibly Recoverable error
         logger.error(f"File access error for {file_path}: {str(e)}")
         raise
     except Exception as e:
+        # Bubbled-up + Non-Recoverable (unknown error)
         logger.exception("Unexpected error processing file %s", file_path)
-        raise RuntimeError(f"Failed to process {file_path}") from e
+        raise RuntimeError(
+            f"Failed to process {file_path}: internal error"
+        ) from e  # Maintain original error context
 
 
 def import_data(data_source, username: str, scope_name: str):

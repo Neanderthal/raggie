@@ -94,7 +94,16 @@ async def chat(username: str = "", scope_name: str = ""):
             print(f"You Asked: {question}")
             print(f"Answer: {answer}")
         except UnicodeError as e:
-            print(f"Error reading input: {e}. Please try again.")
+            # New + Recoverable error (bad user input)
+            print(f"Invalid input encoding: {e}. Please try different text.")
             continue
+        except ConnectionError as e:
+            # Bubbled-up + Possibly Recoverable
+            print("Chat service unavailable. Please try again later")
+            break
+        except Exception as e:
+            # Bubbled-up + Non-Recoverable
+            print("System error - please restart chat")
+            raise
 
     print("Chat ended.")
