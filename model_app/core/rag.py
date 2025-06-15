@@ -66,13 +66,16 @@ async def rag_query(
         return results
 
     except ValueError as e:
-        logger.error(f"Invalid RAG query parameters: {str(e)}")
-        return [("Invalid query parameters", 0.0)]  # Maintain expected return type
+        # New + Recoverable (invalid user input)
+        logger.warning(f"Invalid RAG parameters: {str(e)}")
+        return [("Invalid query: check parameters", 0.0)]  # Maintain expected return type
     except ConnectionError as e:
-        logger.error(f"Embedding service unavailable: {str(e)}")
-        return "Service temporarily unavailable - please try again later"
+        # Bubbled-up + Recoverable
+        logger.warning("Embedding service unavailable")
+        return [("Service unavailable - try later", 0.0)]
     except Exception as e:
-        logger.exception("Unexpected error in RAG query")
-        return "An unexpected error occurred - our team has been notified"
+        # Bubbled-up + Non-Recoverable
+        logger.exception("System error in RAG")
+        raise RuntimeError("RAG system failure") from e  # Let framework handle crash
     finally:
         pass
