@@ -25,7 +25,8 @@ def get_pgvector_client():
         connection_str = f"postgresql+psycopg://{os.getenv('DB_USER', 'pgvector')}:{os.getenv('DB_PASSWORD', 'password')}@{os.getenv('DB_HOST', 'db')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME', 'pgvector_rag')}"
         
         # Initialize embedding model
-        embedding_model = CustomLlamaEmbeddings(base_url=os.getenv("EMBEDDING_MODEL_URL"))
+        embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8000/v1")
+        embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
         
         # Create PGVector client
         _pgvector_client = PGVector(
@@ -79,7 +80,7 @@ async def rag_query(
             embedding=embedding,
             k=k,
             filter=filter_dict if filter_dict else None,
-            score_threshold=similarity_threshold
+            distance_threshold=1.0 - similarity_threshold  # Convert similarity to distance
         )
         
         # Convert from (Document, score) to (content, similarity)

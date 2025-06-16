@@ -123,7 +123,7 @@ def import_data(data_source, username: str, scope_name: str, document_name: str 
                 logger.info(f"Sending {len(chunks)} chunks from '{doc_name}' to embedding task")
                 app.send_task(
                     "model_app.tasks.text_to_embeddings",
-                    args=(chunks, username, scope_name, doc_name),  # Include document name
+                    args=(chunks, username, scope_name, doc_name or "unknown"),  # Ensure non-None document name
                     kwargs={},  # Explicit empty kwargs
                     queue="embeddings_queue",
                 )
