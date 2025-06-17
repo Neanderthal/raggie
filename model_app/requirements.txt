@@ -17,3 +17,4 @@ langchain_postgres
 langchain_core
 langchain_experimental
 httpx==0.26.0
+alembic

@@ -1,10 +1,13 @@
 from __future__ import annotations
 import os
-from typing import Tuple, List, Optional, Dict, Any
+from typing import List, Optional
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from sqlalchemy import Column
 from pgvector.sqlalchemy import Vector
 from dotenv import load_dotenv
+
+# Import pgvector for alembic
+import pgvector
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -39,7 +42,7 @@ class Document(SQLModel, table=True):
 
 # Database connection
 DATABASE_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, echo=False)
 
 def get_session():
     with Session(engine) as session:
