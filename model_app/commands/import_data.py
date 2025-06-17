@@ -92,7 +92,7 @@ def process_file(file_path: str) -> List[str]:
 
 
 @log_data_import
-def import_data(data_source, username: str, scope_name: str, document_name: str = None):
+def import_data(data_source, username: str, scope_name: str, document_name: str = "unknown"):
     """Import data with user and scope metadata"""
 
     if os.path.isdir(data_source):
@@ -123,7 +123,7 @@ def import_data(data_source, username: str, scope_name: str, document_name: str 
                 logger.info(f"Sending {len(chunks)} chunks from '{doc_name}' to embedding task")
                 app.send_task(
                     "model_app.tasks.text_to_embeddings",
-                    args=(chunks, username, scope_name, doc_name or "unknown"),  # Ensure non-None document name
+                    args=(chunks, username, scope_name, str(doc_name or "unknown")),  # Ensure string document name
                     kwargs={},  # Explicit empty kwargs
                     queue="embeddings_queue",
                 )

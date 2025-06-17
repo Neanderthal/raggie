@@ -78,13 +78,16 @@ async def rag_query(
         # Query PGVector with similarity search
         results_with_scores = vector_store.similarity_search_with_score_by_vector(
             embedding=embedding,
-            k=k,
+            k=k * 2,  # Request more results than needed to allow for filtering
             filter=filter_dict if filter_dict else None,
-            distance_threshold=1.0 - similarity_threshold  # Convert similarity to distance
         )
         
+        # Filter by similarity threshold and take top k
+        filtered_results = [(doc, score) for doc, score in results_with_scores if score >= similarity_threshold]
+        filtered_results = filtered_results[:k]  # Limit to k results
+        
         # Convert from (Document, score) to (content, similarity)
-        results = [(doc.page_content, score) for doc, score in results_with_scores]
+        results = [(doc.page_content, score) for doc, score in filtered_results]
 
         # Log results
         logger.info(f"Query: '{query}' - Found {len(results)} matching documents")
