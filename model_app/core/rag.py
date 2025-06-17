@@ -46,7 +46,7 @@ async def rag_query(
     user: str | None = None,
     document_name: str | None = None,
     k: int = 5,
-    similarity_threshold: float = 0.7,
+    similarity_threshold: float = 0.2,
 ) -> List[Tuple[str, float]]:
     """Query RAG documents using PGVector.
 
@@ -65,49 +65,32 @@ async def rag_query(
         # Get PGVector client
         vector_store = get_pgvector_client()
 
-        # Build filter based on scope, user, and document name
+        # Build filter using PGVector's native filtering syntax
         filter_dict = {}
         if scope:
-            filter_dict["scope"] = scope
+            filter_dict["scope"] = {"$eq": scope}
         if user:
-            filter_dict["username"] = user
+            filter_dict["username"] = {"$eq": user}
         if document_name:
-            filter_dict["document_name"] = document_name
+            filter_dict["document_name"] = {"$eq": document_name}
 
-        # Generate embedding for the query (we'll use the embedding directly)
-        _, embedding = await generate_embeddings(query)
-
-        # Query PGVector with similarity search
+        # Use PGVector's native similarity search with filtering
+        # TODO make it async by using asimilarity_search_with_score
         if filter_dict:
-            # Use similarity_search_with_score and filter manually if needed
-            results_with_scores = vector_store.similarity_search_with_score_by_vector(
-                embedding=embedding,
-                k=k * 3,  # Request more results to allow for post-filtering
+            results_with_scores = vector_store.similarity_search_with_score(
+                query=query, k=k, filter=filter_dict
             )
-            # Filter results based on metadata
-            filtered_results_with_scores = []
-            for doc, score in results_with_scores:
-                match = True
-                for key, value in filter_dict.items():
-                    if doc.metadata.get(key) != value:
-                        match = False
-                        break
-                if match:
-                    filtered_results_with_scores.append((doc, score))
-            results_with_scores = filtered_results_with_scores
         else:
-            results_with_scores = vector_store.similarity_search_with_score_by_vector(
-                embedding=embedding,
-                k=k * 2,
+            results_with_scores = vector_store.similarity_search_with_score(
+                query=query, k=k
             )
 
-        # Filter by similarity threshold and take top k
+        # Filter by similarity threshold
         filtered_results = [
             (doc, score)
             for doc, score in results_with_scores
             if score >= similarity_threshold
         ]
-        filtered_results = filtered_results[:k]  # Limit to k results
 
         # Convert from (Document, score) to (content, similarity)
         results = [(doc.page_content, score) for doc, score in filtered_results]
