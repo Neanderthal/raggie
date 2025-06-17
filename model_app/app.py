@@ -103,7 +103,7 @@ async def main():
 
     if hasattr(args, "func"):
         if args.command == Command.CREATE_DB.value:
-            await args.func()
+            args.func()
         elif args.command == Command.CHAT.value:
             await args.func(username=args.username, scope_name=args.scope)
         elif args.command == Command.IMPORT_DATA.value:

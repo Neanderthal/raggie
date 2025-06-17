@@ -261,14 +261,34 @@ def clear_all_data() -> int:
     with Session(engine) as session:
         try:
             # Count documents before deletion
-            doc_count = session.exec(select(InitialDocument)).all()
-            count = len(doc_count)
+            try:
+                doc_count = session.exec(select(InitialDocument)).all()
+                count = len(doc_count)
+            except Exception:
+                # If InitialDocument table doesn't exist, return 0
+                return 0
             
             # Delete in order due to foreign key constraints
-            session.execute(delete(VectorDocument))
-            session.execute(delete(InitialDocument))
-            session.execute(delete(User))
-            session.execute(delete(Scope))
+            # Handle case where tables might not exist
+            try:
+                session.execute(delete(VectorDocument))
+            except Exception:
+                pass  # Table doesn't exist, skip
+            
+            try:
+                session.execute(delete(InitialDocument))
+            except Exception:
+                pass  # Table doesn't exist, skip
+            
+            try:
+                session.execute(delete(User))
+            except Exception:
+                pass  # Table doesn't exist, skip
+            
+            try:
+                session.execute(delete(Scope))
+            except Exception:
+                pass  # Table doesn't exist, skip
             
             session.commit()
             return count
@@ -282,26 +302,45 @@ def clear_user_data(username: str) -> int:
     with Session(engine) as session:
         try:
             # Find user
-            user = session.exec(select(User).where(User.username == username)).first()
-            if not user:
+            try:
+                user = session.exec(select(User).where(User.username == username)).first()
+                if not user:
+                    return 0
+            except Exception:
+                # User table doesn't exist
                 return 0
             
             # Get user's documents
-            user_docs = session.exec(
-                select(InitialDocument).where(InitialDocument.user_id == user.id)
-            ).all()
-            count = len(user_docs)
+            try:
+                user_docs = session.exec(
+                    select(InitialDocument).where(InitialDocument.user_id == user.id)
+                ).all()
+                count = len(user_docs)
+            except Exception:
+                # InitialDocument table doesn't exist
+                count = 0
+                user_docs = []
             
             # Delete vector documents for this user's initial documents
             for doc in user_docs:
-                session.execute(
-                    delete(VectorDocument).where(VectorDocument.initial_document_id == doc.id)
-                )
+                if doc.id is not None:
+                    doc_id = doc.id
+                    try:
+                        session.execute(
+                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
+                        )
+                    except Exception:
+                        pass  # VectorDocument table doesn't exist, skip
             
             # Delete user's initial documents
-            session.execute(
-                delete(InitialDocument).where(InitialDocument.user_id == user.id)
-            )
+            if user.id is not None:
+                user_id = user.id
+                try:
+                    session.execute(
+                        delete(InitialDocument).where(InitialDocument.user_id == user_id)
+                    )
+                except Exception:
+                    pass  # InitialDocument table doesn't exist, skip
             
             # Delete user
             session.delete(user)
@@ -318,26 +357,45 @@ def clear_scope_data(scope_name: str) -> int:
     with Session(engine) as session:
         try:
             # Find scope
-            scope = session.exec(select(Scope).where(Scope.name == scope_name)).first()
-            if not scope:
+            try:
+                scope = session.exec(select(Scope).where(Scope.name == scope_name)).first()
+                if not scope:
+                    return 0
+            except Exception:
+                # Scope table doesn't exist
                 return 0
             
             # Get scope's documents
-            scope_docs = session.exec(
-                select(InitialDocument).where(InitialDocument.scope_id == scope.id)
-            ).all()
-            count = len(scope_docs)
+            try:
+                scope_docs = session.exec(
+                    select(InitialDocument).where(InitialDocument.scope_id == scope.id)
+                ).all()
+                count = len(scope_docs)
+            except Exception:
+                # InitialDocument table doesn't exist
+                count = 0
+                scope_docs = []
             
             # Delete vector documents for this scope's initial documents
             for doc in scope_docs:
-                session.execute(
-                    delete(VectorDocument).where(VectorDocument.initial_document_id == doc.id)
-                )
+                if doc.id is not None:
+                    doc_id = doc.id
+                    try:
+                        session.execute(
+                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
+                        )
+                    except Exception:
+                        pass  # VectorDocument table doesn't exist, skip
             
             # Delete scope's initial documents
-            session.execute(
-                delete(InitialDocument).where(InitialDocument.scope_id == scope.id)
-            )
+            if scope.id is not None:
+                scope_id = scope.id
+                try:
+                    session.execute(
+                        delete(InitialDocument).where(InitialDocument.scope_id == scope_id)
+                    )
+                except Exception:
+                    pass  # InitialDocument table doesn't exist, skip
             
             # Delete scope
             session.delete(scope)
@@ -354,33 +412,53 @@ def clear_user_scope_data(username: str, scope_name: str) -> int:
     with Session(engine) as session:
         try:
             # Find user and scope
-            user = session.exec(select(User).where(User.username == username)).first()
-            scope = session.exec(select(Scope).where(Scope.name == scope_name)).first()
-            
-            if not user or not scope:
+            try:
+                user = session.exec(select(User).where(User.username == username)).first()
+                scope = session.exec(select(Scope).where(Scope.name == scope_name)).first()
+                
+                if not user or not scope:
+                    return 0
+            except Exception:
+                # User or Scope table doesn't exist
                 return 0
             
             # Get documents for this user and scope
-            user_scope_docs = session.exec(
-                select(InitialDocument).where(
-                    InitialDocument.user_id == user.id,
-                    InitialDocument.scope_id == scope.id
-                )
-            ).all()
-            count = len(user_scope_docs)
+            try:
+                user_scope_docs = session.exec(
+                    select(InitialDocument).where(
+                        InitialDocument.user_id == user.id,
+                        InitialDocument.scope_id == scope.id
+                    )
+                ).all()
+                count = len(user_scope_docs)
+            except Exception:
+                # InitialDocument table doesn't exist
+                count = 0
+                user_scope_docs = []
             
             # Delete vector documents for these initial documents
             for doc in user_scope_docs:
-                session.execute(
-                    delete(VectorDocument).where(VectorDocument.initial_document_id == doc.id)
-                )
+                if doc.id is not None:
+                    doc_id = doc.id
+                    try:
+                        session.execute(
+                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
+                        )
+                    except Exception:
+                        pass  # VectorDocument table doesn't exist, skip
             
             # Delete initial documents
-            session.execute(
-                delete(InitialDocument).where(
-                    (InitialDocument.user_id == user.id) & (InitialDocument.scope_id == scope.id)
-                )
-            )
+            if user.id is not None and scope.id is not None:
+                user_id = user.id
+                scope_id = scope.id
+                try:
+                    session.execute(
+                        delete(InitialDocument).where(
+                            (InitialDocument.user_id == user_id) & (InitialDocument.scope_id == scope_id)
+                        )
+                    )
+                except Exception:
+                    pass  # InitialDocument table doesn't exist, skip
             
             session.commit()
             return count
