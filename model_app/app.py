@@ -9,7 +9,7 @@ from dotenv import find_dotenv, load_dotenv
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model_app.commands.chat import chat
-from model_app.commands.create_db import create_db
+from model_app.commands.create_db import create_db, check_migrations
 from model_app.commands.import_data import import_data
 from model_app.commands.clear_data import clear_data
 
@@ -21,6 +21,7 @@ class Command(Enum):
     IMPORT_DATA = "import-data"
     CHAT = "chat"
     CLEAR_DATA = "clear-data"
+    CHECK_MIGRATIONS = "check-migrations"
 
 
 async def main():
@@ -76,6 +77,13 @@ async def main():
     )
     chat_parser.set_defaults(func=chat)
 
+    # check-migrations command
+    check_migrations_parser = subparsers.add_parser(
+        Command.CHECK_MIGRATIONS.value,
+        help="Check database migration status"
+    )
+    check_migrations_parser.set_defaults(func=check_migrations)
+
     # clear-data command
     clear_data_parser = subparsers.add_parser(
         Command.CLEAR_DATA.value, help="Clear RAG data from database"
@@ -108,6 +116,9 @@ async def main():
             await args.func(username=args.username, scope_name=args.scope)
         elif args.command == Command.IMPORT_DATA.value:
             args.func(args.data_source, username=args.username, scope_name=args.scope, document_name=args.document_name)
+        elif args.command == Command.CHECK_MIGRATIONS.value:
+            for name, status in args.func():
+                print(f"{name}: {status}")
         elif args.command == Command.CLEAR_DATA.value:
             args.func(username=args.username, scope_name=args.scope, confirm=args.confirm)
     else:
