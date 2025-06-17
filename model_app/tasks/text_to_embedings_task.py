@@ -10,6 +10,10 @@ from celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+# Suppress verbose HTTP logging from httpx
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 # Configuration
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
 embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")

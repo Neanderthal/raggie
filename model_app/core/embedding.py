@@ -10,6 +10,10 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+# Suppress verbose HTTP logging from httpx
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 # Load environment variables from the model_app directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
