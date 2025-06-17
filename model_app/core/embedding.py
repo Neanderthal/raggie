@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "tokenizer-model")
-embedding_url = os.getenv("EMBEDDING_MODEL_URL") or "http://localhost:8000/v1"
+embedding_url = os.getenv("EMBEDDING_MODEL_URL") or "http://localhost:8001/v1"
 assert embedding_url is not None, "EMBEDDING_MODEL_URL must be set"
 
 
@@ -27,11 +27,11 @@ class CustomLlamaEmbeddings(Embeddings):
         for text in texts:
             res = requests.post(
                 f"{self.base_url}/embeddings",
-                json={"content": text},
+                json={"input": text, "model": "text-embedding"},
             )
             res.raise_for_status()
             data = res.json()
-            embedding = data[0]["embedding"]
+            embedding = data["data"][0]["embedding"]
             if isinstance(embedding[0], (list, tuple)):  # Flatten if multi-dimensional
                 embedding = [item for sublist in embedding for item in sublist]
             embeddings.append(embedding)
@@ -47,14 +47,18 @@ class CustomLlamaEmbeddings(Embeddings):
         async with httpx.AsyncClient(timeout=timeout) as client:
             for text in texts:
                 try:
+                    # Ensure text is properly encoded
+                    if isinstance(text, str):
+                        text = text.encode('utf-8').decode('utf-8')
+                    
                     response = await client.post(
                         f"{self.base_url}/embeddings",
-                        json={"content": text},
-                        headers={"Content-Type": "application/json"}
+                        json={"input": text, "model": "text-embedding"},
+                        headers={"Content-Type": "application/json; charset=utf-8"}
                     )
                     response.raise_for_status()
                     data = response.json()
-                    embedding = data[0]["embedding"]
+                    embedding = data["data"][0]["embedding"]
                     if isinstance(embedding[0], (list, tuple)):  
                         embedding = [item for sublist in embedding for item in sublist]
                     embeddings.append(embedding)
@@ -64,6 +68,9 @@ class CustomLlamaEmbeddings(Embeddings):
                 except httpx.RequestError as e:
                     logger.error("Embedding service connection failed")
                     raise ConnectionError("Could not connect to embedding service") from e
+                except UnicodeDecodeError as e:
+                    logger.error(f"Text encoding error: {e}")
+                    raise ValueError("Invalid text encoding") from e
                 except Exception as e:
                     logger.exception("Unexpected error generating embedding")
                     raise RuntimeError("Failed to generate embedding") from e
@@ -81,7 +88,6 @@ async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
         ConnectionError: If embedding service is unavailable
         ValueError: If embeddings couldn't be generated
     """
-    """Generate embeddings with retry logic and health checking."""
     embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
     text_clean = text.strip()
     if not text_clean:
@@ -92,20 +98,32 @@ async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
     
     for attempt in range(max_retries):
         try:
-            # Check tokenizer health first
-            async with httpx.AsyncClient() as client:
-                health = await client.get(f"{embedding_url.rstrip('/v1')}/health")
-                if health.status_code != 200:
-                    raise ConnectionError(f"Tokenizer health check failed: {health.status_code}")
+            # Check if embedding service is available
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                try:
+                    health_url = f"{embedding_url.rstrip('/v1').rstrip('/')}/health"
+                    health = await client.get(health_url)
+                    if health.status_code != 200:
+                        logger.warning(f"Embedding service health check failed: {health.status_code}")
+                except Exception:
+                    logger.warning("Embedding service health check failed, trying direct embedding")
                 
                 response = await embedding_model.aembed_documents([text_clean])
                 return text_clean, response[0]
                 
-        except Exception as e:
+        except (httpx.ConnectError, httpx.TimeoutException) as e:
+            logger.warning(f"Attempt {attempt + 1}: Embedding service unavailable: {str(e)}")
             if attempt == max_retries - 1:
-                logger.error(f"Failed after {max_retries} attempts to generate embedding: {str(e)}")
+                logger.error(f"Failed after {max_retries} attempts to connect to embedding service")
+                raise ConnectionError("Embedding service is unavailable")
+            await asyncio.sleep(retry_delay * (attempt + 1))
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1}: Unexpected error generating embedding: {str(e)}")
+            if attempt == max_retries - 1:
+                logger.error(f"Failed after {max_retries} attempts to generate embedding")
                 return text_clean, [0.0] * 768
             await asyncio.sleep(retry_delay * (attempt + 1))
+    
     return text_clean, [0.0] * 768  # Fallback return
 
 

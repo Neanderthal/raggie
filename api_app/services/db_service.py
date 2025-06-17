@@ -10,7 +10,7 @@ import asyncio
 from sqlmodel import Session, select
 
 from api_app.config import settings
-from model_app.db.db import engine, Document, User, Scope
+from model_app.db.db import engine, InitialDocument, User, Scope
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class DBService:
         """Execute a RAG query synchronously using SQLModel."""
         with Session(self.engine) as session:
             # Start with base query
-            query = select(Document)
+            query = select(InitialDocument)
             
             # Add filters for scope if provided
             if scope:
@@ -78,7 +78,7 @@ class DBService:
                 scope_stmt = select(Scope).where(Scope.name == scope)
                 scope_obj = session.exec(scope_stmt).first()
                 if scope_obj:
-                    query = query.where(Document.scope_id == scope_obj.id)
+                    query = query.where(InitialDocument.scope_id == scope_obj.id)
             
             # Add filters for user if provided
             if user:
@@ -86,7 +86,7 @@ class DBService:
                 user_stmt = select(User).where(User.username == user)
                 user_obj = session.exec(user_stmt).first()
                 if user_obj:
-                    query = query.where(Document.user_id == user_obj.id)
+                    query = query.where(InitialDocument.user_id == user_obj.id)
             
             # Execute query to get documents
             documents = session.exec(query).all()
@@ -137,7 +137,7 @@ class DBService:
                 doc_id = int(document_id) if document_id.isdigit() else document_id
                 
                 # Query the document
-                statement = select(Document).where(Document.id == doc_id)
+                statement = select(InitialDocument).where(InitialDocument.id == doc_id)
                 document = session.exec(statement).first()
                 
                 if document:
@@ -145,7 +145,6 @@ class DBService:
                     return {
                         "id": document.id,
                         "content": document.content,
-                        "embedding": document.embedding,
                         "user_id": document.user_id,
                         "scope_id": document.scope_id
                     }

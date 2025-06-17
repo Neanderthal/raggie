@@ -42,6 +42,16 @@ def texts_to_embeddings(
         logger.error(f"Failed to get/create user or scope: {str(e)}")
         raise
 
+    # Create initial document record
+    try:
+        from model_app.db.db import create_initial_document
+        full_content = "\n".join(texts)  # Combine all chunks back to original content
+        initial_doc_id = create_initial_document(full_content, user_id, scope_id)
+        logger.info(f"Created initial document with ID: {initial_doc_id}")
+    except Exception as e:
+        logger.error(f"Failed to create initial document: {str(e)}")
+        raise
+
     # Generate embeddings for each text chunk
     embeddings = []
     for text in texts:
@@ -55,6 +65,7 @@ def texts_to_embeddings(
                 "scope_id": scope_id,
                 "user_id": user_id,
                 "document_name": document_name,
+                "initial_document_id": initial_doc_id,  # Add reference to initial document
             }
 
             # Add document_id to metadata if provided
@@ -85,10 +96,10 @@ def texts_to_embeddings(
 
     logger.info(f"Generated {len(embeddings)} embeddings")
 
-    # Store embeddings using the function from rag.py
+    # Store embeddings using the function from rag.py with initial document ID
     logger.info(f"Storing {len(embeddings)} embeddings in database")
     try:
-        ids = asyncio.run(store_embeddings(embeddings))
+        ids = asyncio.run(store_embeddings(embeddings, initial_document_id=initial_doc_id))
         logger.info(
             f"Successfully stored {len(embeddings)} document chunks in database"
         )

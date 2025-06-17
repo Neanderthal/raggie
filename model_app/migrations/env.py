@@ -9,22 +9,35 @@ from alembic import context
 from sqlmodel import SQLModel
 from dotenv import load_dotenv
 
+# Model / Schema imports - import all models you want migrated
+# pyright: ignore[reportUnusedImport]
+from db.db import User, Scope, InitialDocument  # noqa: F401
+
+
 # Load environment variables
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 config = context.config
 
 # Set database URL from environment variables
-db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_host = os.getenv("DB_HOST", "localhost")
+db_port = os.getenv("DB_PORT", "5432")
+db_name = os.getenv("DB_NAME")
+
+if not all([db_user, db_password, db_name]):
+    raise ValueError(
+        "Missing required environment variables: DB_USER, DB_PASSWORD, DB_NAME"
+    )
+
+db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-# Model / Schema imports - import all models you want migrated
-from db.db import User, Scope, Document
 
 target_metadata = SQLModel.metadata
 
@@ -67,9 +80,7 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

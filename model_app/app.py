@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from model_app.commands.chat import chat
 from model_app.commands.create_db import create_db
 from model_app.commands.import_data import import_data
+from model_app.commands.clear_data import clear_data
 
 load_dotenv(find_dotenv(".env"))
 
@@ -19,6 +20,7 @@ class Command(Enum):
     CREATE_DB = "create-db"
     IMPORT_DATA = "import-data"
     CHAT = "chat"
+    CLEAR_DATA = "clear-data"
 
 
 async def main():
@@ -74,6 +76,29 @@ async def main():
     )
     chat_parser.set_defaults(func=chat)
 
+    # clear-data command
+    clear_data_parser = subparsers.add_parser(
+        Command.CLEAR_DATA.value, help="Clear RAG data from database"
+    )
+    clear_data_parser.add_argument(
+        "--username",
+        type=str,
+        required=False,
+        help="Clear data only for this user",
+    )
+    clear_data_parser.add_argument(
+        "--scope",
+        type=str,
+        required=False,
+        help="Clear data only for this scope",
+    )
+    clear_data_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Skip confirmation prompt",
+    )
+    clear_data_parser.set_defaults(func=clear_data)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):
@@ -83,6 +108,8 @@ async def main():
             await args.func(username=args.username, scope_name=args.scope)
         elif args.command == Command.IMPORT_DATA.value:
             args.func(args.data_source, username=args.username, scope_name=args.scope, document_name=args.document_name)
+        elif args.command == Command.CLEAR_DATA.value:
+            args.func(username=args.username, scope_name=args.scope, confirm=args.confirm)
     else:
         print("Invalid command. Use '--help' for assistance.")
 
