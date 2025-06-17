@@ -1,11 +1,13 @@
 fastapi
 uvicorn
 celery
-pydantic
+pydantic<2.0.0
 python-dotenv
 openai
 numpy
 pgvector
 langchain
 httpx
-asyncpg
+sqlmodel==0.0.8
+psycopg2-binary
+sqlalchemy==1.4.41

@@ -34,8 +34,9 @@ def texts_to_embeddings(
 
     # Ensure user and scope exist in the database
     try:
-        user_id = asyncio.run(get_or_create_user(username))
-        scope_id = asyncio.run(get_or_create_scope(scope_name))
+        # These functions are not coroutines, so we don't need asyncio.run
+        user_id = get_or_create_user(username)
+        scope_id = get_or_create_scope(scope_name)
         logger.info(f"Using user ID: {user_id}, scope ID: {scope_id}")
     except Exception as e:
         logger.error(f"Failed to get/create user or scope: {str(e)}")
