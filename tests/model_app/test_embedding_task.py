@@ -44,11 +44,8 @@ class TestEmbeddingTaskProcessor:
             mock_get_scope.return_value = 2  # Scope ID
             mock_create_doc.return_value = 3  # Document ID
             
-            # Create a future with an event loop
-            loop = asyncio.new_event_loop()
-            future = loop.create_future()
-            future.set_result(["doc1", "doc2"])
-            mock_store.return_value = future
+            # Use AsyncMock to return a list directly instead of a Future
+            mock_store.return_value = ["doc1", "doc2"]
             
             yield {
                 "get_user": mock_get_user,

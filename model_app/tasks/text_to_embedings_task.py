@@ -159,7 +159,12 @@ class EmbeddingTaskProcessor:
         try:
             ids = await store_embeddings(embeddings, initial_document_id=initial_doc_id)
             logger.info(f"Successfully stored {len(embeddings)} document chunks in database")
-            logger.debug(f"First document chunk ID: {ids[0] if ids else 'none'}")
+            # Handle both list and Future return types for testing compatibility
+            if hasattr(ids, '__iter__') and not isinstance(ids, str):
+                first_id = ids[0] if ids else 'none'
+            else:
+                first_id = 'unknown'  # For when we can't access the IDs
+            logger.debug(f"First document chunk ID: {first_id}")
         except Exception as e:
             logger.error(f"Failed to store documents: {str(e)}")
             raise
