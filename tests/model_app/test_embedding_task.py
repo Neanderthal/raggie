@@ -38,15 +38,15 @@ class TestEmbeddingTaskProcessor:
         with patch('model_app.tasks.text_to_embedings_task.get_or_create_user') as mock_get_user, \
              patch('model_app.tasks.text_to_embedings_task.get_or_create_scope') as mock_get_scope, \
              patch('model_app.tasks.text_to_embedings_task.create_initial_document') as mock_create_doc, \
-             patch('model_app.tasks.text_to_embedings_task.store_embeddings') as mock_store:
+             patch('model_app.tasks.text_to_embedings_task.rag_service.store_embeddings') as mock_store:
             
             # Configure mocks
             mock_get_user.return_value = 1  # User ID
             mock_get_scope.return_value = 2  # Scope ID
             mock_create_doc.return_value = 3  # Document ID
             
-            # Use AsyncMock to return a list directly instead of a Future
-            mock_store.return_value = ["doc1", "doc2"]
+            # Use AsyncMock for async function
+            mock_store.return_value = AsyncMock(return_value=["doc1", "doc2"])
             
             yield {
                 "get_user": mock_get_user,
