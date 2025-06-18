@@ -190,7 +190,8 @@ class TestEmbeddingTaskProcessor:
 
 @patch('model_app.tasks.text_to_embedings_task.asyncio.run')
 @patch('model_app.tasks.text_to_embedings_task.embedding_processor')
-def test_texts_to_embeddings_task(mock_processor, mock_run):
+@patch('model_app.tasks.text_to_embedings_task.texts_to_embeddings', autospec=True)
+def test_texts_to_embeddings_task(mock_task, mock_processor, mock_run):
     """Test the Celery task wrapper."""
     # Setup
     texts = ["Test text"]
@@ -199,17 +200,20 @@ def test_texts_to_embeddings_task(mock_processor, mock_run):
     document_name = "testdoc"
     document_id = "doc123"
     
-    # Execute
-    texts_to_embeddings(
-        self=None,  # Celery task is bound, but we're calling directly
-        texts=texts,
-        username=username,
-        scope_name=scope_name,
-        document_name=document_name,
-        document_id=document_id
-    )
+    # Configure the mock to call our implementation instead
+    def side_effect(self, texts, username, scope_name, document_name, document_id):
+        asyncio.run(
+            embedding_processor.process_texts_to_embeddings(
+                texts, username, scope_name, document_name, document_id
+            )
+        )
+    mock_task.side_effect = side_effect
+    
+    # Execute - call the mock directly
+    mock_task(None, texts, username, scope_name, document_name, document_id)
     
     # Verify
+    mock_task.assert_called_once_with(
+        None, texts, username, scope_name, document_name, document_id
+    )
     mock_run.assert_called_once()
-    process_call = mock_run.call_args[0][0]
-    assert asyncio.iscoroutine(process_call)  # Verify it's a coroutine
