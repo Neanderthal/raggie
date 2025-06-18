@@ -37,6 +37,8 @@
         "ChatExport_*",
         "sample.pdf",
         "*.docx",
-        ".aider*"
+        ".aider*",
+        "versions/*",
+        ".mako"
     ]
 }
