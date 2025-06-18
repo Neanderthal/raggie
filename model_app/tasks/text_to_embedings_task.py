@@ -20,7 +20,11 @@ embedding_url = os.getenv("EMBEDDING_MODEL_URL", "http://localhost:8001/v1")
 
 
 @celery_app.task(
-    bind=True, name="model_app.tasks.text_to_embeddings", queue="embeddings_queue"
+    bind=True, 
+    name="model_app.tasks.text_to_embeddings", 
+    queue="embeddings_queue",
+    soft_time_limit=300,  # 5 minutes soft limit
+    time_limit=600        # 10 minutes hard limit
 )
 def texts_to_embeddings(
     self,

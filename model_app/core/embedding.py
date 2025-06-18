@@ -23,8 +23,9 @@ assert embedding_url is not None, "EMBEDDING_MODEL_URL must be set"
 
 
 class CustomLlamaEmbeddings(Embeddings):
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, timeout: float = 60.0):
         self.base_url = base_url  # e.g. "http://tokenizer_model:8000"
+        self.timeout = timeout
 
     def embed_documents(self, texts):
         embeddings = []
@@ -47,7 +48,7 @@ class CustomLlamaEmbeddings(Embeddings):
     async def aembed_documents(self, texts):
         """Async generate embeddings with better error handling."""
         embeddings = []
-        timeout = httpx.Timeout(30.0)  # 30 second timeout
+        timeout = httpx.Timeout(self.timeout)  # Configurable timeout
         async with httpx.AsyncClient(timeout=timeout) as client:
             for text in texts:
                 try:
@@ -92,13 +93,14 @@ async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
         ConnectionError: If embedding service is unavailable
         ValueError: If embeddings couldn't be generated
     """
-    embedding_model = CustomLlamaEmbeddings(base_url=embedding_url)
+    # Use longer timeout for slow tokenizer models
+    embedding_model = CustomLlamaEmbeddings(base_url=embedding_url, timeout=120.0)
     text_clean = text.strip()
     if not text_clean:
         return "empty", [0.0] * 768
 
     max_retries = 3
-    retry_delay = 0.5  # seconds
+    base_retry_delay = 0.5  # seconds
     
     for attempt in range(max_retries):
         try:
@@ -120,13 +122,17 @@ async def generate_embeddings(text: str) -> Tuple[str, list[float]]:
             if attempt == max_retries - 1:
                 logger.error(f"Failed after {max_retries} attempts to connect to embedding service")
                 raise ConnectionError("Embedding service is unavailable")
-            await asyncio.sleep(retry_delay * (attempt + 1))
+            # Exponential backoff with jitter, capped at 30 seconds
+            retry_delay = min(base_retry_delay * (2 ** attempt), 30)
+            await asyncio.sleep(retry_delay)
         except Exception as e:
             logger.error(f"Attempt {attempt + 1}: Unexpected error generating embedding: {str(e)}")
             if attempt == max_retries - 1:
                 logger.error(f"Failed after {max_retries} attempts to generate embedding")
                 return text_clean, [0.0] * 768
-            await asyncio.sleep(retry_delay * (attempt + 1))
+            # Exponential backoff with jitter, capped at 30 seconds
+            retry_delay = min(base_retry_delay * (2 ** attempt), 30)
+            await asyncio.sleep(retry_delay)
     
     return text_clean, [0.0] * 768  # Fallback return
 
