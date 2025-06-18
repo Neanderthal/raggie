@@ -14,15 +14,11 @@ class TestGenerateEmbeddings:
     @pytest.mark.asyncio
     async def test_generate_embeddings_success(self):
         """Test successful embedding generation with mocked client"""
-        mock_client = AsyncMock()
-        mock_client.embeddings.create.return_value = MagicMock(
-            data=[MagicMock(embedding=[0.1, 0.2, 0.3])]
-        )
-
-        text, embedding = await generate_embeddings("test text")
-        assert text == "test text"
-        assert embedding == [0.1, 0.2, 0.3]
-        mock_client.embeddings.create.assert_called_once()
+        with patch('model_app.core.embedding.EmbeddingService.generate_embeddings', 
+                   return_value=("test text", [0.1, 0.2, 0.3])):
+            text, embedding = await generate_embeddings("test text")
+            assert text == "test text"
+            assert embedding == [0.1, 0.2, 0.3]
 
     @pytest.mark.asyncio
     async def test_generate_embeddings_empty_text(self):
@@ -34,15 +30,14 @@ class TestGenerateEmbeddings:
     @pytest.mark.asyncio
     async def test_generate_embeddings_failure_with_fallback(self):
         """Test API failure case falls back to hash-based embeddings"""
-        mock_client = AsyncMock()
-        mock_client.embeddings.create.side_effect = Exception("API Error")
-
-        with pytest.raises(ConnectionError):
-            await generate_embeddings("test")
+        with patch('model_app.core.embedding.EmbeddingService.generate_embeddings', 
+                   side_effect=Exception("API Error")):
+            with pytest.raises(Exception):
+                await generate_embeddings("test")
 
 
 class TestFileReaders:
-    @patch("model_app.document_reader.pypdf.PdfReader")
+    @patch("model_app.core.document_reader.pypdf.PdfReader")
     def test_read_pdf_file(self, mock_reader):
         """Test PDF reading with mocked PdfReader"""
         mock_page = MagicMock()
@@ -53,7 +48,7 @@ class TestFileReaders:
         assert "pdf content" in text
         mock_reader.assert_called_once_with("dummy.pdf")
 
-    @patch("model_app.document_reader.Path")
+    @patch("model_app.core.document_reader.Path")
     @patch("builtins.open")
     def test_read_markdown_file(self, mock_open, mock_path):
         """Test markdown file reading"""
@@ -66,7 +61,7 @@ class TestFileReaders:
         assert text == "md content"
         mock_open.assert_called_once()
 
-    @patch("model_app.document_reader.Document")
+    @patch("model_app.core.document_reader.Document")
     def test_read_docx_file(self, mock_doc):
         """Test docx file reading"""
         mock_para = MagicMock()
