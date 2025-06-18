@@ -191,7 +191,14 @@ def test_texts_to_embeddings_task(mock_processor, mock_run):
     document_id = "doc123"
     
     # Execute
-    texts_to_embeddings(texts, username, scope_name, document_name, document_id)
+    texts_to_embeddings(
+        self=None,  # Celery task is bound, but we're calling directly
+        texts=texts,
+        username=username,
+        scope_name=scope_name,
+        document_name=document_name,
+        document_id=document_id
+    )
     
     # Verify
     mock_run.assert_called_once()
