@@ -1,8 +1,12 @@
 import os
 from typing import Optional, List
 from datetime import datetime
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select, and_, Column, Integer, asc
 from sqlalchemy import delete
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql import Delete
 from dotenv import load_dotenv
 
 # Import pgvector for alembic
@@ -47,7 +51,7 @@ class VectorDocument(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     initial_document_id: int = Field(foreign_key="documents.id")
     vector_store_id: str = Field(index=True)  # UUID from vector store
-    chunk_index: int = Field(default=0)  # Order of chunk within the document
+    chunk_index: int = Field(default=0, sa_column=Column(Integer))  # Order of chunk within the document
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -241,7 +245,7 @@ def get_vector_documents_by_initial_id(initial_document_id: int) -> List[str]:
         vector_docs = session.exec(
             select(VectorDocument.vector_store_id)
             .where(VectorDocument.initial_document_id == initial_document_id)
-            .order_by("chunk_index")
+            .order_by(asc(VectorDocument.chunk_index))
         ).all()
         return list(vector_docs)
 
@@ -326,9 +330,8 @@ def clear_user_data(username: str) -> int:
                 if doc.id is not None:
                     doc_id = doc.id
                     try:
-                        session.execute(
-                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
-                        )
+                        stmt = delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)  # type: ignore
+                        session.execute(stmt)
                     except Exception:
                         pass  # VectorDocument table doesn't exist, skip
             
@@ -336,9 +339,8 @@ def clear_user_data(username: str) -> int:
             if user.id is not None:
                 user_id = user.id
                 try:
-                    session.execute(
-                        delete(InitialDocument).where(InitialDocument.user_id == user_id)
-                    )
+                    stmt = delete(InitialDocument).where(InitialDocument.user_id == user_id)  # type: ignore
+                    session.execute(stmt)
                 except Exception:
                     pass  # InitialDocument table doesn't exist, skip
             
@@ -381,9 +383,8 @@ def clear_scope_data(scope_name: str) -> int:
                 if doc.id is not None:
                     doc_id = doc.id
                     try:
-                        session.execute(
-                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
-                        )
+                        stmt = delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)  # type: ignore
+                        session.execute(stmt)
                     except Exception:
                         pass  # VectorDocument table doesn't exist, skip
             
@@ -391,9 +392,8 @@ def clear_scope_data(scope_name: str) -> int:
             if scope.id is not None:
                 scope_id = scope.id
                 try:
-                    session.execute(
-                        delete(InitialDocument).where(InitialDocument.scope_id == scope_id)
-                    )
+                    stmt = delete(InitialDocument).where(InitialDocument.scope_id == scope_id)  # type: ignore
+                    session.execute(stmt)
                 except Exception:
                     pass  # InitialDocument table doesn't exist, skip
             
@@ -441,9 +441,8 @@ def clear_user_scope_data(username: str, scope_name: str) -> int:
                 if doc.id is not None:
                     doc_id = doc.id
                     try:
-                        session.execute(
-                            delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)
-                        )
+                        stmt = delete(VectorDocument).where(VectorDocument.initial_document_id == doc_id)  # type: ignore
+                        session.execute(stmt)
                     except Exception:
                         pass  # VectorDocument table doesn't exist, skip
             
@@ -454,7 +453,10 @@ def clear_user_scope_data(username: str, scope_name: str) -> int:
                 try:
                     session.execute(
                         delete(InitialDocument).where(
-                            (InitialDocument.user_id == user_id) & (InitialDocument.scope_id == scope_id)
+                            and_(
+                                InitialDocument.user_id == user_id,
+                                InitialDocument.scope_id == scope_id
+                            )
                         )
                     )
                 except Exception:
