@@ -2,6 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typing import List, Dict, Any
+import pytest_asyncio
 
 from model_app.tasks.text_to_embedings_task import (
     EmbeddingTaskProcessor,
@@ -42,8 +43,12 @@ class TestEmbeddingTaskProcessor:
             mock_get_user.return_value = 1  # User ID
             mock_get_scope.return_value = 2  # Scope ID
             mock_create_doc.return_value = 3  # Document ID
-            mock_store.return_value = asyncio.Future()
-            mock_store.return_value.set_result(["doc1", "doc2"])
+            
+            # Create a future with an event loop
+            loop = asyncio.new_event_loop()
+            future = loop.create_future()
+            future.set_result(["doc1", "doc2"])
+            mock_store.return_value = future
             
             yield {
                 "get_user": mock_get_user,
@@ -51,6 +56,13 @@ class TestEmbeddingTaskProcessor:
                 "create_doc": mock_create_doc,
                 "store": mock_store
             }
+
+    @pytest_asyncio.fixture
+    async def event_loop(self):
+        """Create an event loop for tests."""
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
 
     @pytest.mark.asyncio
     async def test_process_texts_to_embeddings_success(self, processor, mock_db_functions):

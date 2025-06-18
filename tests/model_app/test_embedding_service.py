@@ -3,6 +3,7 @@ import asyncio
 import httpx
 from unittest.mock import patch, MagicMock, AsyncMock
 from typing import List, Dict, Any
+import pytest_asyncio
 
 from model_app.core.embedding import (
     EmbeddingService,
@@ -16,6 +17,13 @@ from model_app.core.embedding import (
 
 class TestEmbeddingService:
     """Integration tests for the EmbeddingService."""
+    
+    @pytest_asyncio.fixture
+    async def event_loop(self):
+        """Create an event loop for tests."""
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
 
     @pytest.fixture
     def config(self):
