@@ -203,7 +203,7 @@ def test_texts_to_embeddings_task(mock_task, mock_processor, mock_run):
     # Configure the mock to call our implementation instead
     def side_effect(self, texts, username, scope_name, document_name, document_id):
         asyncio.run(
-            embedding_processor.process_texts_to_embeddings(
+            mock_processor.process_texts_to_embeddings(
                 texts, username, scope_name, document_name, document_id
             )
         )
