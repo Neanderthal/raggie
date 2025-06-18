@@ -1,18 +1,32 @@
-import logging
-import os
-from typing import List, Tuple, Dict, Any, Optional
-from uuid import uuid4
-from dataclasses import dataclass
-from dotenv import load_dotenv
-from langchain_postgres import PGVector
-from langchain_core.documents import Document
-from model_app.core.embedding import CustomLlamaEmbeddings
-from model_app.core.text_chunker import chunk_text
-from model_app.db.db import store_vector_document_links
+"""Facade module for RAG operations.
 
-logger = logging.getLogger(__name__)
+This module provides a simple interface to the RAG functionality
+by re-exporting components from specialized modules.
+"""
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+# Re-export configuration
+from model_app.core.rag_config import RAGConfig, rag_config
+
+# Re-export exceptions
+from model_app.core.rag_exceptions import RAGServiceError, RAGQueryError, RAGStorageError
+
+# Re-export vector store client
+from model_app.core.vector_store import get_pgvector_client
+
+# Re-export RAG service
+from model_app.core.rag_service import (
+    RAGService, 
+    rag_service,
+    rag_query,
+    store_embeddings
+)
+
+# Re-export text chunker
+from model_app.core.text_chunker_service import (
+    TextChunker,
+    text_chunker,
+    chunk_text_legacy
+)
 
 
 @dataclass
