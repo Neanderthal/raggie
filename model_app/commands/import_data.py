@@ -9,7 +9,7 @@ from model_app.core.document_reader import (
     read_markdown_file,
     read_docx_file,
 )
-from model_app.core.rag import chunk_text
+from model_app.core.text_chunker import chunk_text
 from model_app.utils.logging_decorators import log_function_call, log_file_processing, log_data_import
 
 
