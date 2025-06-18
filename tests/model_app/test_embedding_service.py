@@ -1,14 +1,14 @@
+"""Tests for embedding service functionality."""
+
 import pytest
 import asyncio
 import httpx
 from unittest.mock import patch, MagicMock, AsyncMock
-from typing import List, Dict, Any
 import pytest_asyncio
 
 from model_app.core.embedding import (
     EmbeddingService,
     EmbeddingConfig,
-    CustomLlamaEmbeddings,
     EmbeddingConnectionError,
     EmbeddingAPIError,
     clean_text

@@ -1,7 +1,8 @@
+"""Tests for embedding task processing."""
+
 import pytest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
-from typing import List, Dict, Any
 import pytest_asyncio
 
 from model_app.tasks.text_to_embedings_task import (
@@ -9,7 +10,7 @@ from model_app.tasks.text_to_embedings_task import (
     texts_to_embeddings,
     EmbeddingTaskConfig
 )
-from model_app.core.embedding import EmbeddingService, EmbeddingConnectionError, EmbeddingAPIError
+from model_app.core.embedding import EmbeddingConnectionError, EmbeddingAPIError
 
 
 class TestEmbeddingTaskProcessor:

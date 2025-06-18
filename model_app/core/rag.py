@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from langchain_postgres import PGVector
 from langchain_core.documents import Document
 from model_app.core.embedding import CustomLlamaEmbeddings
+from model_app.core.text_chunker import chunk_text
 from model_app.db.db import store_vector_document_links
 
 logger = logging.getLogger(__name__)
@@ -346,6 +347,6 @@ text_chunker = TextChunker()
 
 
 # Convenience function for backward compatibility
-def chunk_text(text: str) -> List[str]:
+def chunk_text_legacy(text: str) -> List[str]:
     """Split text into semantic chunks using the default chunker."""
     return text_chunker.chunk_text(text)
